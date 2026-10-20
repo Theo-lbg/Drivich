@@ -246,6 +246,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/comments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a comment (its author or the item's owner) */
+        delete: operations["delete_comment"];
+        options?: never;
+        head?: never;
+        /** Edit your own comment */
+        patch: operations["edit_comment"];
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -384,6 +402,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/nodes/zip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download a selection of items as a .zip (streamed) */
+        get: operations["zip_selection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/nodes/{id}": {
         parameters: {
             query?: never;
@@ -401,6 +436,24 @@ export interface paths {
         head?: never;
         /** Rename, move, star or describe */
         patch: operations["update_node"];
+        trace?: never;
+    };
+    "/api/v1/nodes/{id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Comments on an item, oldest first */
+        get: operations["list_comments"];
+        put?: never;
+        /** Add a comment (commenter role or better) */
+        post: operations["add_comment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/nodes/{id}/content": {
@@ -488,6 +541,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/nodes/{id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The PDF rendition, once ready (404 before) */
+        get: operations["preview"];
+        put?: never;
+        /** Start (once) and report the PDF rendition of an Office document */
+        post: operations["request_preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/nodes/{id}/restore": {
         parameters: {
             query?: never;
@@ -551,6 +622,91 @@ export interface paths {
         put?: never;
         /** Move to the trash */
         post: operations["trash_node"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/nodes/{id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Older versions of a file, newest first */
+        get: operations["list_versions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/nodes/{id}/versions/{version}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete an older version */
+        delete: operations["delete_version"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/nodes/{id}/versions/{version}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download an older version */
+        get: operations["download_version"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/nodes/{id}/versions/{version}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make an older version current (the replaced content is kept as a version) */
+        post: operations["restore_version"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/nodes/{id}/zip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download a folder as a .zip (streamed) */
+        get: operations["zip_folder"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -651,6 +807,23 @@ export interface paths {
         };
         /** Thumbnail through a public link */
         get: operations["public_thumbnail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/{token}/nodes/{id}/zip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download a shared folder as a .zip */
+        get: operations["public_zip"];
         put?: never;
         post?: never;
         delete?: never;
@@ -880,6 +1053,35 @@ export interface components {
             id: string;
             name: string;
         };
+        Comment: {
+            /** Format: int64 */
+            author_avatar_version: number;
+            /** Format: uuid */
+            author_id: string;
+            author_name: string;
+            body: string;
+            /** @description The caller wrote it or owns the item. */
+            can_delete: boolean;
+            /** @description The caller wrote it. */
+            can_edit: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            edited_at?: string | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            node_id: string;
+        };
+        CommentBody: {
+            body: string;
+        };
+        CommentEnvelope: {
+            comment: components["schemas"]["Comment"];
+        };
+        CommentsResponse: {
+            items: components["schemas"]["Comment"][];
+        };
         Counts: {
             /** Format: int64 */
             files: number;
@@ -997,9 +1199,15 @@ export interface components {
             expires_at?: string | null;
         };
         NewUpload: {
-            name: string;
+            /** @description Required unless `replace_node_id` is set. */
+            name?: string | null;
             /** Format: uuid */
             parent_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Upload a new version of this file instead of creating a new one.
+             */
+            replace_node_id?: string | null;
             /** Format: int64 */
             size: number;
         };
@@ -1034,6 +1242,9 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
         };
+        NodeEnvelope: {
+            node: components["schemas"]["Node"];
+        };
         NodePatch: {
             description?: string | null;
             name?: string | null;
@@ -1057,6 +1268,10 @@ export interface components {
         };
         PathResponse: {
             items: components["schemas"]["BreadcrumbItem"][];
+        };
+        PreviewResponse: {
+            /** @description none, pending, ready, failed or unsupported */
+            state: string;
         };
         ProfilePatch: {
             /** @description `null` clears the personal address. */
@@ -1190,6 +1405,28 @@ export interface components {
         };
         UserList: {
             items: components["schemas"]["UserBrief"][];
+        };
+        Version: {
+            /** Format: uuid */
+            id: string;
+            mime: string;
+            /**
+             * Format: date-time
+             * @description When it stopped being the current content.
+             */
+            replaced_at: string;
+            /**
+             * Format: date-time
+             * @description When this content was first stored.
+             */
+            saved_at: string;
+            /** Format: int64 */
+            size: number;
+        };
+        VersionsResponse: {
+            items: components["schemas"]["Version"][];
+            /** Format: int64 */
+            max_versions: number;
         };
     };
     responses: never;
@@ -1653,6 +1890,56 @@ export interface operations {
             };
         };
     };
+    delete_comment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Comment id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+        };
+    };
+    edit_comment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Comment id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentBody"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentEnvelope"];
+                };
+            };
+        };
+    };
     health: {
         parameters: {
             query?: never;
@@ -1947,6 +2234,45 @@ export interface operations {
             };
         };
     };
+    zip_selection: {
+        parameters: {
+            query: {
+                /** @description Comma-separated item ids (1 to 200) */
+                ids: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description zip archive */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid selection or too many items */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many archives in progress */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     get_node: {
         parameters: {
             query?: never;
@@ -2037,6 +2363,65 @@ export interface operations {
                 };
             };
             /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_comments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Item id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Comments */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentsResponse"];
+                };
+            };
+        };
+    };
+    add_comment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Item id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentEnvelope"];
+                };
+            };
+            /** @description Viewers cannot comment */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2188,6 +2573,59 @@ export interface operations {
             };
         };
     };
+    preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description File id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PDF */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not ready */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    request_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description File id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description State */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewResponse"];
+                };
+            };
+        };
+    };
     restore_node: {
         parameters: {
             query?: never;
@@ -2310,6 +2748,159 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+        };
+    };
+    list_versions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description File id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Versions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionsResponse"];
+                };
+            };
+        };
+    };
+    delete_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description File id */
+                id: string;
+                /** @description Version id */
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+        };
+    };
+    download_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description File id */
+                id: string;
+                /** @description Version id */
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description File bytes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unknown version */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    restore_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description File id */
+                id: string;
+                /** @description Version id */
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Updated file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeEnvelope"];
+                };
+            };
+            /** @description Editors only */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    zip_folder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Folder id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description zip archive */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not a folder or too many items */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many archives in progress */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
                 };
             };
         };
@@ -2460,6 +3051,29 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description JPEG image */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    public_zip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Link token */
+                token: string;
+                /** @description Folder id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description zip archive */
             200: {
                 headers: {
                     [name: string]: unknown;

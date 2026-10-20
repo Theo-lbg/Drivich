@@ -164,6 +164,65 @@ curl -sf "${A[@]}" -X PATCH -H 'Content-Type: application/json' -d '{"immich_url
 curl -sf "${A[@]}" "$BASE/me" | jq -e '.immich_url == "https://default.example.test"' >/dev/null && ok "clearing the personal address falls back to the default"
 curl -sf "${ADM[@]}" -X PUT -H 'Content-Type: application/json' -d '{"immich_url":null}' "$BASE/admin/settings" >/dev/null
 
+# --- zip download of folders -------------------------------------------------------------------------------------
+mkfolder() { curl -sf "${A[@]}" -H 'Content-Type: application/json' -d "{\"parent_id\":$2,\"name\":\"$1\"}" "$BASE/nodes/folder" | json .id; }
+upfile() { # parent name content
+  local id; id="$(curl -sf "${A[@]}" -H 'Content-Type: application/json' -d "{\"parent_id\":\"$1\",\"name\":\"$2\",\"size\":${#3}}" "$BASE/uploads" | json .upload.id)"
+  curl -sf "${A[@]}" -X PATCH -H 'Upload-Offset: 0' --data-binary "$3" "$BASE/uploads/$id" | json .node.id
+}
+ZR="$(mkfolder "Zip $RUN" null)"; ZS="$(mkfolder "sous" "\"$ZR\"")"; mkfolder "vide" "\"$ZR\"" >/dev/null
+ZA="$(upfile "$ZR" "a.txt" "alpha")"; upfile "$ZS" "b.txt" "bravo bravo" >/dev/null
+curl -sf "${A[@]}" -o "$TMP/f.zip" "$BASE/nodes/$ZR/zip"
+unzip -tq "$TMP/f.zip" >/dev/null && ok "folder downloads as a valid .zip"
+unzip -Z1 "$TMP/f.zip" | sort | tr '\n' '|' | grep -qx "Zip $RUN/|Zip $RUN/a.txt|Zip $RUN/sous/|Zip $RUN/sous/b.txt|Zip $RUN/vide/|" && ok "zip keeps the tree, empty folders included"
+[[ "$(unzip -p "$TMP/f.zip" "Zip $RUN/sous/b.txt")" == "bravo bravo" ]] && ok "zip content is intact"
+cd_head="$(curl -sI "${A[@]}" "$BASE/nodes/$ZR/zip" | tr -d '\r' | awk -F': ' 'tolower($1)=="content-disposition"{print $2}')"
+[[ "$cd_head" == attachment* ]] && ok "zip is an attachment"
+expect_status 404 "bob cannot zip alice's folder" "${B[@]}" "$BASE/nodes/$ZR/zip"
+expect_status 400 "a file is not zipped on its own route" "${A[@]}" "$BASE/nodes/$ZA/zip"
+curl -sf "${A[@]}" -o "$TMP/sel.zip" "$BASE/nodes/zip?ids=$ZA,$ZR" && unzip -tq "$TMP/sel.zip" >/dev/null && ok "a selection downloads as one .zip"
+expect_status 400 "an invalid selection is refused" "${A[@]}" "$BASE/nodes/zip?ids=nope"
+ZL="$(curl -sf "${A[@]}" -X POST -H 'Content-Type: application/json' -d '{}' "$BASE/nodes/$ZR/links")"; ZT="$(echo "$ZL" | json .token)"
+curl -sf -o "$TMP/pub.zip" "$BASE/public/$ZT/nodes/$ZR/zip" && unzip -tq "$TMP/pub.zip" >/dev/null && ok "shared folder zip through a public link"
+expect_status 404 "public zip outside the link is refused" "$BASE/public/$ZT/nodes/$F1/zip"
+
+# --- versions -----------------------------------------------------------------------------------------------------------
+newver() { # node content -> prints new size
+  local id; id="$(curl -sf "${A[@]}" -H 'Content-Type: application/json' -d "{\"replace_node_id\":\"$1\",\"size\":${#2}}" "$BASE/uploads" | json .upload.id)"
+  curl -sf "${A[@]}" -X PATCH -H 'Upload-Offset: 0' --data-binary "$2" "$BASE/uploads/$id" | json .node.size
+}
+[[ "$(newver "$ZA" "alpha two")" == 9 ]] && ok "uploading over a file creates a new version"
+newver "$ZA" "alpha three!" >/dev/null
+curl -sf "${A[@]}" "$BASE/nodes/$ZA/versions" | jq -e '(.items | length == 2) and .max_versions >= 1' >/dev/null && ok "versions are listed"
+V1="$(curl -sf "${A[@]}" "$BASE/nodes/$ZA/versions" | json '.items[-1].id')"
+[[ "$(curl -sf "${A[@]}" "$BASE/nodes/$ZA/versions/$V1/download")" == "alpha" ]] && ok "an old version downloads with its original bytes"
+curl -sf "${A[@]}" -X POST "$BASE/nodes/$ZA/versions/$V1/restore" | jq -e '.node.size == 5' >/dev/null && ok "restoring an old version works"
+[[ "$(curl -sf "${A[@]}" "$BASE/nodes/$ZA/download")" == "alpha" ]] && ok "restored content is the current content"
+curl -sf "${A[@]}" -H 'Content-Type: application/json' -d "{\"email\":\"$EMAIL_B\",\"role\":\"viewer\"}" "$BASE/nodes/$ZR/shares" >/dev/null
+expect_status 200 "a viewer can read versions" "${B[@]}" "$BASE/nodes/$ZA/versions"
+expect_status 403 "a viewer cannot upload a version" "${B[@]}" -H 'Content-Type: application/json' -d "{\"replace_node_id\":\"$ZA\",\"size\":3}" "$BASE/uploads"
+expect_status 403 "a viewer cannot restore a version" "${B[@]}" -X POST "$BASE/nodes/$ZA/versions/$V1/restore"
+curl -sf "${A[@]}" -X DELETE "$BASE/nodes/$ZA/versions/$V1" >/dev/null && ok "an old version can be deleted"
+
+# --- comments ----------------------------------------------------------------------------------------------------------
+expect_status 403 "a viewer cannot comment" "${B[@]}" -H 'Content-Type: application/json' -d '{"body":"hi"}' "$BASE/nodes/$ZA/comments"
+SHARE_B="$(curl -sf "${A[@]}" "$BASE/nodes/$ZR/shares" | json '.users[0].id')"
+curl -sf "${A[@]}" -X PATCH -H 'Content-Type: application/json' -d '{"role":"commenter"}' "$BASE/shares/$SHARE_B" >/dev/null
+CID="$(curl -sf "${B[@]}" -H 'Content-Type: application/json' -d '{"body":"  <b>bonjour</b>  "}' "$BASE/nodes/$ZA/comments" | json .comment.id)"
+curl -sf "${A[@]}" "$BASE/nodes/$ZA/comments" | jq -e '.items[0].body == "<b>bonjour</b>" and .items[0].can_delete == true and .items[0].can_edit == false' >/dev/null && ok "a commenter comments; the owner sees it and may delete it"
+expect_status 403 "only the author edits a comment" "${A[@]}" -X PATCH -H 'Content-Type: application/json' -d '{"body":"x"}' "$BASE/comments/$CID"
+curl -sf "${B[@]}" -X PATCH -H 'Content-Type: application/json' -d '{"body":"corrigé"}' "$BASE/comments/$CID" | jq -e '.comment.edited_at != null' >/dev/null && ok "the author edits their comment"
+expect_status 400 "an empty comment is refused" "${B[@]}" -H 'Content-Type: application/json' -d '{"body":"   "}' "$BASE/nodes/$ZA/comments"
+curl -sf "${A[@]}" -X DELETE "$BASE/comments/$CID" >/dev/null && ok "the owner deletes a comment"
+expect_status 404 "a stranger cannot even list comments" "${ADM[@]}" "$BASE/nodes/$ZA/comments"
+
+# --- Office previews (the worker renders them; without it the request is just queued) ---------------------
+DOCX="$(upfile "$ZR" "Rapport.docx" "PK-not-a-real-docx")"
+st="$(curl -sf "${A[@]}" -X POST "$BASE/nodes/$DOCX/preview" | json .state)"
+[[ "$st" == pending || "$st" == unsupported || "$st" == failed || "$st" == ready ]] && ok "Office preview is requested ($st)"
+curl -sf "${A[@]}" -X POST "$BASE/nodes/$ZA/preview" | jq -e '.state == "unsupported"' >/dev/null && ok "a text file has no Office preview"
+expect_status 404 "no preview file before the worker made one" "${B[@]}" "$BASE/nodes/$DOCX/preview"
+
 # --- logout ----------------------------------------------------------------------------------------------------------------------------
 curl -sf "${A[@]}" -X POST "$BASE/auth/logout" >/dev/null
 expect_status 401 "session is invalid after logout" "${A[@]}" "$BASE/nodes"

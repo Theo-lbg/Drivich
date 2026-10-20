@@ -31,6 +31,7 @@ pub fn routes() -> Router<AppState> {
         .route("/public/{token}/nodes/{id}/children", get(public_children))
         .route("/public/{token}/nodes/{id}/download", get(public_download))
         .route("/public/{token}/nodes/{id}/content", get(public_content))
+        .route("/public/{token}/nodes/{id}/zip", get(public_zip))
         .route(
             "/public/{token}/nodes/{id}/thumbnail",
             get(public_thumbnail),
@@ -117,7 +118,11 @@ async fn revoke_link(
 // ---- public links -----------------------------------------------------------
 
 /// A node reachable through the link: the shared root or something inside it.
-async fn scoped(st: &AppState, token: &str, id: Uuid) -> Result<perms::NodeRef, CoreError> {
+pub(crate) async fn scoped(
+    st: &AppState,
+    token: &str,
+    id: Uuid,
+) -> Result<perms::NodeRef, CoreError> {
     let root = shares::resolve_link(&st.pool, token).await?;
     let node = perms::node_ref(&st.pool, id).await?;
     if node.trashed_at.is_some() || !perms::is_within(&st.pool, node.id, root.id).await? {
@@ -191,4 +196,16 @@ async fn public_thumbnail(
 ) -> ApiResult<Response> {
     let n = scoped(&st, &token, id).await?;
     files::serve_thumbnail(&st, &n, &headers).await
+}
+
+async fn public_zip(
+    State(st): State<AppState>,
+    Path((token, id)): Path<(String, Uuid)>,
+) -> ApiResult<Response> {
+    let n = scoped(&st, &token, id).await?;
+    if n.kind != "folder" {
+        return Err(CoreError::bad("only folders can be downloaded as a .zip").into());
+    }
+    let name = format!("{}.zip", drivich_core::archive::safe_component(&n.name));
+    crate::routes::archive::stream_zip(&st, vec![n], &name).await
 }

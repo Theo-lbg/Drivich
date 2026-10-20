@@ -595,7 +595,8 @@ pub async fn delete_permanently(
              SELECT id, blob_id FROM nodes WHERE id = $1 \
              UNION ALL \
              SELECT c.id, c.blob_id FROM nodes c JOIN sub s ON c.parent_id = s.id \
-         ) SELECT blob_id FROM sub WHERE blob_id IS NOT NULL",
+         ) SELECT blob_id FROM sub WHERE blob_id IS NOT NULL \
+           UNION SELECT v.blob_id FROM node_versions v JOIN sub ON v.node_id = sub.id",
     )
     .bind(id)
     .fetch_all(pool)
@@ -609,7 +610,9 @@ pub async fn delete_permanently(
 
 pub async fn empty_trash(pool: &Pool, storage: &Storage, user: Uuid) -> Result<u64> {
     let blobs: Vec<Uuid> = sqlx::query_scalar(
-        "SELECT blob_id FROM nodes WHERE owner_id = $1 AND trashed_at IS NOT NULL AND blob_id IS NOT NULL",
+        "SELECT blob_id FROM nodes WHERE owner_id = $1 AND trashed_at IS NOT NULL AND blob_id IS NOT NULL \
+         UNION SELECT v.blob_id FROM node_versions v JOIN nodes n ON n.id = v.node_id \
+               WHERE n.owner_id = $1 AND n.trashed_at IS NOT NULL",
     )
     .bind(user)
     .fetch_all(pool)
@@ -630,7 +633,7 @@ pub async fn free_orphans(pool: &Pool, storage: &Storage, candidates: &[Uuid]) -
         return Ok(());
     }
     let orphans: Vec<Uuid> = sqlx::query_scalar(
-        "DELETE FROM blobs b WHERE b.id = ANY($1) AND NOT EXISTS (SELECT 1 FROM nodes n WHERE n.blob_id = b.id) RETURNING b.id",
+        "DELETE FROM blobs b WHERE b.id = ANY($1) AND NOT EXISTS (SELECT 1 FROM nodes n WHERE n.blob_id = b.id) AND NOT EXISTS (SELECT 1 FROM node_versions v WHERE v.blob_id = b.id) RETURNING b.id",
     )
     .bind(candidates)
     .fetch_all(pool)
@@ -644,7 +647,9 @@ pub async fn free_orphans(pool: &Pool, storage: &Storage, candidates: &[Uuid]) -
 /// Items trashed longer than `days` ago, owned by anyone (worker maintenance).
 pub async fn purge_old_trash(pool: &Pool, storage: &Storage, days: i64) -> Result<u64> {
     let blobs: Vec<Uuid> = sqlx::query_scalar(
-        "SELECT blob_id FROM nodes WHERE trashed_at < now() - make_interval(days => $1::int) AND blob_id IS NOT NULL",
+        "SELECT blob_id FROM nodes WHERE trashed_at < now() - make_interval(days => $1::int) AND blob_id IS NOT NULL \
+         UNION SELECT v.blob_id FROM node_versions v JOIN nodes n ON n.id = v.node_id \
+               WHERE n.trashed_at < now() - make_interval(days => $1::int)",
     )
     .bind(days as i32)
     .fetch_all(pool)

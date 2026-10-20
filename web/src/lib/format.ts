@@ -97,9 +97,28 @@ export function typeLabel(n: Pick<NodeItem, 'kind' | 'mime' | 'name'>): string {
 	return classLabel(classify(n));
 }
 
+const OFFICE_MIMES = new Set([
+	'application/msword',
+	'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+	'application/vnd.ms-excel',
+	'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+	'application/vnd.ms-powerpoint',
+	'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+	'application/vnd.oasis.opendocument.text',
+	'application/vnd.oasis.opendocument.spreadsheet',
+	'application/vnd.oasis.opendocument.presentation',
+	'application/rtf',
+	'text/rtf'
+]);
+
+/** Word, Excel, PowerPoint, OpenDocument and RTF files: shown as a PDF rendition made by the server. */
+export function isOffice(n: Pick<NodeItem, 'kind' | 'mime'>): boolean {
+	return n.kind === 'file' && OFFICE_MIMES.has(n.mime ?? '');
+}
+
 export function isPreviewable(n: Pick<NodeItem, 'kind' | 'mime' | 'name'>): boolean {
 	const c = classify(n);
-	return c === 'image' || c === 'video' || c === 'audio' || c === 'pdf' || c === 'text' || c === 'code';
+	return c === 'image' || c === 'video' || c === 'audio' || c === 'pdf' || c === 'text' || c === 'code' || isOffice(n);
 }
 
 export function pct(used: number, total: number | null): number {

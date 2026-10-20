@@ -2,8 +2,8 @@
 // Copyright (c) 2026 Theo-lbg
 
 import type {
-	AdminOverview, AdminUserRow, BackupItem, Crumb, JobControls, ListView, LinkEntry, Me, NodeItem, Page, ShareEntry,
-	ShareInfo, SortKey, Suggestion, User, UserBrief
+	AdminOverview, AdminUserRow, BackupItem, CommentItem, Crumb, JobControls, ListView, LinkEntry, Me, NodeItem, Page, ShareEntry,
+	ShareInfo, SortKey, Suggestion, User, UserBrief, VersionItem
 } from './types';
 
 const BASE = '/api/v1';
@@ -159,6 +159,20 @@ export const api = {
 	publicNode: (token: string, id: string) => get<{ node: NodeItem }>(`/public/${token}/nodes/${id}`),
 	publicChildren: (token: string, id: string, cursor?: string | null) => get<Page>(`/public/${token}/nodes/${id}/children` + qs({ cursor })),
 
+	// comments
+	comments: (id: string) => get<{ items: CommentItem[] }>(`/nodes/${id}/comments`),
+	addComment: (id: string, body: string) => post<{ comment: CommentItem }>(`/nodes/${id}/comments`, { body }),
+	editComment: (id: string, body: string) => patch<{ comment: CommentItem }>(`/comments/${id}`, { body }),
+	deleteComment: (id: string) => del<{ ok: boolean }>(`/comments/${id}`),
+
+	// versions and previews
+	versions: (id: string) => get<{ items: VersionItem[]; max_versions: number }>(`/nodes/${id}/versions`),
+	restoreVersion: (id: string, version: string) => post<{ node: NodeItem }>(`/nodes/${id}/versions/${version}/restore`),
+	deleteVersion: (id: string, version: string) => del<{ ok: boolean }>(`/nodes/${id}/versions/${version}`),
+	requestPreview: (id: string) => post<{ state: 'none' | 'pending' | 'ready' | 'failed' | 'unsupported' }>(`/nodes/${id}/preview`),
+	createVersionUpload: (node_id: string, size: number) =>
+		post<{ upload: { id: string; received: number; total_size: number } }>('/uploads', { replace_node_id: node_id, size }),
+
 	// uploads
 	createUpload: (parent_id: string | null, name: string, size: number) =>
 		post<{ upload: { id: string; received: number; total_size: number } }>('/uploads', { parent_id, name, size }),
@@ -191,6 +205,11 @@ export const urls = {
 	avatar: (userId: string, version: number) => `${BASE}/users/${userId}/avatar?v=${version}`,
 	download: (id: string) => `${BASE}/nodes/${id}/download`,
 	content: (id: string) => `${BASE}/nodes/${id}/content`,
+	zip: (id: string) => `${BASE}/nodes/${id}/zip`,
+	zipSelection: (ids: string[]) => `${BASE}/nodes/zip?ids=${ids.join(',')}`,
+	publicZip: (t: string, id: string) => `${BASE}/public/${t}/nodes/${id}/zip`,
+	preview: (id: string) => `${BASE}/nodes/${id}/preview`,
+	versionDownload: (id: string, version: string) => `${BASE}/nodes/${id}/versions/${version}/download`,
 	thumb: (id: string) => `${BASE}/nodes/${id}/thumbnail`,
 	publicDownload: (t: string, id: string) => `${BASE}/public/${t}/nodes/${id}/download`,
 	publicContent: (t: string, id: string) => `${BASE}/public/${t}/nodes/${id}/content`,

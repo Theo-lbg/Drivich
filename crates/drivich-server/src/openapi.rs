@@ -12,12 +12,14 @@
 
 use chrono::{DateTime, Utc};
 use drivich_core::backups::Backup;
+use drivich_core::comments::Comment;
 use drivich_core::jobs::{FailedJob, JobControls, JobCount};
 use drivich_core::models::{LinkEntry, Node, ShareEntry, User, UserBrief};
 use drivich_core::nodes::{BatchResult, Page};
 use drivich_core::search::Suggestion;
 use drivich_core::shares::ShareInfo;
 use drivich_core::uploads::UploadInfo;
+use drivich_core::versions::Version;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
@@ -249,8 +251,43 @@ pub struct BatchRequest {
 #[derive(Serialize, ToSchema)]
 pub struct NewUpload {
     pub parent_id: Option<Uuid>,
-    pub name: String,
+    /// Required unless `replace_node_id` is set.
+    pub name: Option<String>,
+    /// Upload a new version of this file instead of creating a new one.
+    pub replace_node_id: Option<Uuid>,
     pub size: i64,
+}
+#[derive(Serialize, ToSchema)]
+pub struct CommentBody {
+    pub body: String,
+}
+#[derive(Serialize, ToSchema)]
+pub struct CommentsResponse {
+    pub items: Vec<Comment>,
+}
+#[derive(Serialize, ToSchema)]
+pub struct CommentEnvelope {
+    pub comment: Comment,
+}
+#[derive(Serialize, ToSchema)]
+pub struct VersionsResponse {
+    pub items: Vec<Version>,
+    pub max_versions: i64,
+}
+#[derive(Serialize, ToSchema)]
+pub struct NodeEnvelope {
+    pub node: Node,
+}
+#[derive(Serialize, ToSchema)]
+pub struct PreviewResponse {
+    /// none, pending, ready, failed or unsupported
+    pub state: String,
+}
+#[derive(IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct ZipQuery {
+    /// Comma-separated item ids (1 to 200)
+    pub ids: String,
 }
 #[derive(Serialize, ToSchema)]
 pub struct AddShare {
@@ -418,6 +455,45 @@ fn download() {}
 #[utoipa::path(get, path = "/api/v1/nodes/{id}/content", tag = "files", operation_id = "content", summary = "Inline content for the viewer (unsafe types are served as text)", params(("id" = Uuid, Path, description = "Item id")), responses((status = 200, description = "File bytes"), (status = 206, description = "Partial content")), security(("session" = [])))]
 fn content() {}
 
+#[utoipa::path(get, path = "/api/v1/nodes/{id}/zip", tag = "files", operation_id = "zip_folder", summary = "Download a folder as a .zip (streamed)", params(("id" = Uuid, Path, description = "Folder id")), responses((status = 200, description = "zip archive"), (status = 400, description = "Not a folder or too many items", body = ErrorBody), (status = 429, description = "Too many archives in progress", body = ErrorBody)), security(("session" = [])))]
+fn zip_folder() {}
+
+#[utoipa::path(get, path = "/api/v1/nodes/zip", tag = "files", operation_id = "zip_selection", summary = "Download a selection of items as a .zip (streamed)", params(ZipQuery), responses((status = 200, description = "zip archive"), (status = 400, description = "Invalid selection or too many items", body = ErrorBody), (status = 429, description = "Too many archives in progress", body = ErrorBody)), security(("session" = [])))]
+fn zip_selection() {}
+
+#[utoipa::path(post, path = "/api/v1/nodes/{id}/preview", tag = "files", operation_id = "request_preview", summary = "Start (once) and report the PDF rendition of an Office document", params(("id" = Uuid, Path, description = "File id")), responses((status = 200, description = "State", body = PreviewResponse)), security(("session" = [])))]
+fn request_preview() {}
+
+#[utoipa::path(get, path = "/api/v1/nodes/{id}/preview", tag = "files", operation_id = "preview", summary = "The PDF rendition, once ready (404 before)", params(("id" = Uuid, Path, description = "File id")), responses((status = 200, description = "PDF"), (status = 404, description = "Not ready", body = ErrorBody)), security(("session" = [])))]
+fn preview() {}
+
+#[utoipa::path(get, path = "/api/v1/nodes/{id}/versions", tag = "versions", operation_id = "list_versions", summary = "Older versions of a file, newest first", params(("id" = Uuid, Path, description = "File id")), responses((status = 200, description = "Versions", body = VersionsResponse)), security(("session" = [])))]
+fn list_versions() {}
+
+#[utoipa::path(get, path = "/api/v1/nodes/{id}/versions/{version}/download", tag = "versions", operation_id = "download_version", summary = "Download an older version", params(("id" = Uuid, Path, description = "File id"), ("version" = Uuid, Path, description = "Version id")), responses((status = 200, description = "File bytes"), (status = 404, description = "Unknown version", body = ErrorBody)), security(("session" = [])))]
+fn download_version() {}
+
+#[utoipa::path(post, path = "/api/v1/nodes/{id}/versions/{version}/restore", tag = "versions", operation_id = "restore_version", summary = "Make an older version current (the replaced content is kept as a version)", params(("id" = Uuid, Path, description = "File id"), ("version" = Uuid, Path, description = "Version id")), responses((status = 200, description = "Updated file", body = NodeEnvelope), (status = 403, description = "Editors only", body = ErrorBody)), security(("session" = [])))]
+fn restore_version() {}
+
+#[utoipa::path(delete, path = "/api/v1/nodes/{id}/versions/{version}", tag = "versions", operation_id = "delete_version", summary = "Delete an older version", params(("id" = Uuid, Path, description = "File id"), ("version" = Uuid, Path, description = "Version id")), responses((status = 200, description = "Deleted", body = OkResponse)), security(("session" = [])))]
+fn delete_version() {}
+
+#[utoipa::path(get, path = "/api/v1/nodes/{id}/comments", tag = "comments", operation_id = "list_comments", summary = "Comments on an item, oldest first", params(("id" = Uuid, Path, description = "Item id")), responses((status = 200, description = "Comments", body = CommentsResponse)), security(("session" = [])))]
+fn list_comments() {}
+
+#[utoipa::path(post, path = "/api/v1/nodes/{id}/comments", tag = "comments", operation_id = "add_comment", summary = "Add a comment (commenter role or better)", params(("id" = Uuid, Path, description = "Item id")), request_body = CommentBody, responses((status = 200, description = "Created", body = CommentEnvelope), (status = 403, description = "Viewers cannot comment", body = ErrorBody)), security(("session" = [])))]
+fn add_comment() {}
+
+#[utoipa::path(patch, path = "/api/v1/comments/{id}", tag = "comments", operation_id = "edit_comment", summary = "Edit your own comment", params(("id" = Uuid, Path, description = "Comment id")), request_body = CommentBody, responses((status = 200, description = "Updated", body = CommentEnvelope)), security(("session" = [])))]
+fn edit_comment() {}
+
+#[utoipa::path(delete, path = "/api/v1/comments/{id}", tag = "comments", operation_id = "delete_comment", summary = "Delete a comment (its author or the item's owner)", params(("id" = Uuid, Path, description = "Comment id")), responses((status = 200, description = "Deleted", body = OkResponse)), security(("session" = [])))]
+fn delete_comment() {}
+
+#[utoipa::path(get, path = "/api/v1/public/{token}/nodes/{id}/zip", tag = "public", operation_id = "public_zip", summary = "Download a shared folder as a .zip", params(("token" = String, Path, description = "Link token"), ("id" = Uuid, Path, description = "Folder id")), responses((status = 200, description = "zip archive")))]
+fn public_zip() {}
+
 #[utoipa::path(get, path = "/api/v1/nodes/{id}/thumbnail", tag = "files", operation_id = "thumbnail", summary = "Thumbnail (JPEG), 404 until generated", params(("id" = Uuid, Path, description = "Item id")), responses((status = 200, description = "JPEG image"), (status = 404, description = "Not available", body = ErrorBody)), security(("session" = [])))]
 fn thumbnail() {}
 
@@ -530,6 +606,19 @@ fn admin_download_backup() {}
     ),
     paths(
         health,
+        zip_folder,
+        zip_selection,
+        request_preview,
+        preview,
+        list_versions,
+        download_version,
+        restore_version,
+        delete_version,
+        list_comments,
+        add_comment,
+        edit_comment,
+        delete_comment,
+        public_zip,
         auth_status,
         auth_setup,
         auth_login,
@@ -590,6 +679,14 @@ fn admin_download_backup() {}
         admin_download_backup
     ),
     components(schemas(
+        CommentBody,
+        CommentsResponse,
+        CommentEnvelope,
+        VersionsResponse,
+        NodeEnvelope,
+        PreviewResponse,
+        Comment,
+        Version,
         ErrorDetail,
         ErrorBody,
         OkResponse,
@@ -654,7 +751,7 @@ fn admin_download_backup() {}
     modifiers(&SessionAuth),
     tags(
         (name = "auth"), (name = "account"), (name = "files"), (name = "search"), (name = "uploads"),
-        (name = "sharing"), (name = "public"), (name = "admin"), (name = "system")
+        (name = "sharing"), (name = "versions"), (name = "comments"), (name = "public"), (name = "admin"), (name = "system")
     )
 )]
 pub struct ApiDoc;

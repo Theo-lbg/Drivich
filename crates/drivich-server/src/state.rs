@@ -16,6 +16,8 @@ pub struct AppState {
     pub cfg: Arc<Config>,
     pub limits: Limits,
     pub limiter: Arc<Limiter>,
+    /// Caps simultaneous .zip downloads.
+    pub zip_slots: Arc<tokio::sync::Semaphore>,
 }
 
 /// Tiny in-memory throttle for failed logins: `max` failures per `window`

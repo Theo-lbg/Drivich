@@ -7,6 +7,8 @@
 	import type { NodeItem } from '$lib/types';
 	import { errorToast } from '$lib/state/toast.svelte';
 	import Avatar from './Avatar.svelte';
+	import Comments from './Comments.svelte';
+	import Versions from './Versions.svelte';
 	import Icon from './Icon.svelte';
 	import Thumb from './Thumb.svelte';
 
@@ -69,6 +71,8 @@
 				{/if}
 			</dd>
 		</dl>
+		{#if node.kind === 'file' && !node.trashed_at}<Versions {node} {onchanged} />{/if}
+		{#if !node.trashed_at}<Comments {node} />{/if}
 	{:else}
 		<p class="hint">{count > 1 ? t('details_panel.selectionnez_un_seul_element_pour') : t('details_panel.selectionnez_un_fichier_ou_un')}</p>
 	{/if}

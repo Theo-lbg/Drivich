@@ -10,7 +10,9 @@ use drivich_core::models::Role;
 use drivich_core::nodes::{self, ListParams, SortBy, View};
 use drivich_core::storage::Storage;
 use drivich_core::uploads::{self, Limits};
-use drivich_core::{db, jobs, perms, search, shares, thumbs, users};
+use drivich_core::{
+    archive, comments, db, jobs, office, perms, search, shares, thumbs, users, versions,
+};
 use futures_util::stream;
 use uuid::Uuid;
 
@@ -36,6 +38,7 @@ async fn ctx() -> Ctx {
         limits: Limits {
             max_file_bytes: 0,
             ttl_hours: 1,
+            max_versions: 3,
         },
     }
 }
@@ -82,7 +85,7 @@ async fn upload(
     .await
     .unwrap();
     if data.is_empty() {
-        return uploads::finish_empty(&c.pool, &c.storage, user, info.id)
+        return uploads::finish_empty(&c.pool, &c.storage, &c.limits, user, info.id)
             .await
             .unwrap();
     }
@@ -385,6 +388,7 @@ async fn quota_and_size_limits_are_enforced() {
     let strict = Limits {
         max_file_bytes: 10,
         ttl_hours: 1,
+        max_versions: 3,
     };
     let a = user(&c, "alice").await;
     assert!(matches!(
@@ -982,4 +986,320 @@ async fn paused_kinds_are_skipped_and_limits_are_respected() {
         .execute(&c.pool)
         .await
         .unwrap();
+}
+
+async fn upload_version(
+    c: &Ctx,
+    user: Uuid,
+    node: Uuid,
+    data: &[u8],
+) -> drivich_core::models::Node {
+    let info = uploads::create_version(
+        &c.pool,
+        &c.storage,
+        &c.limits,
+        user,
+        node,
+        data.len() as i64,
+    )
+    .await
+    .unwrap();
+    let body = stream::iter(vec![Ok::<Bytes, std::io::Error>(Bytes::copy_from_slice(
+        data,
+    ))]);
+    uploads::append(&c.pool, &c.storage, &c.limits, user, info.id, 0, body)
+        .await
+        .unwrap()
+        .node
+        .unwrap()
+}
+
+async fn blob_rows(c: &Ctx, ids: &[Uuid]) -> i64 {
+    sqlx::query_scalar("SELECT count(*) FROM blobs WHERE id = ANY($1)")
+        .bind(ids)
+        .fetch_one(&c.pool)
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn new_versions_keep_history_restore_and_free_space() {
+    let c = ctx().await;
+    let (a, b, stranger) = (
+        user(&c, "alice").await,
+        user(&c, "bob").await,
+        user(&c, "eve").await,
+    );
+    let f = upload(&c, a, None, "notes.txt", b"one").await;
+    let blob1: Uuid = sqlx::query_scalar("SELECT blob_id FROM nodes WHERE id = $1")
+        .bind(f.id)
+        .fetch_one(&c.pool)
+        .await
+        .unwrap();
+
+    let f2 = upload_version(&c, a, f.id, b"two two").await;
+    assert_eq!((f2.id, f2.size), (f.id, 7));
+    let list = versions::list(&c.pool, a, f.id).await.unwrap();
+    assert_eq!(list.len(), 1);
+    assert_eq!(list[0].size, 3);
+
+    // The old bytes are still downloadable through the version.
+    let (_, vblob, _) = versions::locate(&c.pool, a, f.id, list[0].id)
+        .await
+        .unwrap();
+    assert_eq!(vblob, blob1);
+    assert_eq!(std::fs::read(c.storage.blob_path(vblob)).unwrap(), b"one");
+
+    // Restoring swaps: nothing is lost, the replaced content becomes a version.
+    let back = versions::restore(&c.pool, &c.storage, a, f.id, list[0].id, 3)
+        .await
+        .unwrap();
+    assert_eq!(back.size, 3);
+    let list = versions::list(&c.pool, a, f.id).await.unwrap();
+    assert_eq!(list.len(), 1);
+    assert_eq!(list[0].size, 7);
+
+    // Only the newest `max_versions` are kept; dropped blobs disappear from disk.
+    let mut seen = vec![blob1];
+    for i in 0..5u8 {
+        upload_version(&c, a, f.id, &[i; 10]).await;
+        let cur: Uuid = sqlx::query_scalar("SELECT blob_id FROM nodes WHERE id = $1")
+            .bind(f.id)
+            .fetch_one(&c.pool)
+            .await
+            .unwrap();
+        seen.push(cur);
+    }
+    assert_eq!(versions::list(&c.pool, a, f.id).await.unwrap().len(), 3);
+    assert!(
+        !c.storage.blob_path(seen[1]).exists(),
+        "pruned version file removed"
+    );
+    assert_eq!(blob_rows(&c, &seen).await, 4, "current + 3 versions remain");
+
+    // Quota counts every stored version.
+    let used = users::used_bytes(&c.pool, a).await.unwrap();
+    assert_eq!(used, 10 * 4);
+
+    // Rights: viewers cannot replace, strangers do not even see the file.
+    shares::add_user(
+        &c.pool,
+        a,
+        f.id,
+        &users::get(&c.pool, b).await.unwrap().email,
+        "viewer",
+    )
+    .await
+    .unwrap();
+    assert!(versions::list(&c.pool, b, f.id).await.is_ok());
+    assert!(matches!(
+        uploads::create_version(&c.pool, &c.storage, &c.limits, b, f.id, 1).await,
+        Err(CoreError::Forbidden)
+    ));
+    assert!(matches!(
+        versions::list(&c.pool, stranger, f.id).await,
+        Err(CoreError::NotFound)
+    ));
+    assert!(matches!(
+        versions::restore(
+            &c.pool,
+            &c.storage,
+            b,
+            f.id,
+            versions::list(&c.pool, a, f.id).await.unwrap()[0].id,
+            3
+        )
+        .await,
+        Err(CoreError::Forbidden)
+    ));
+
+    // Deleting the file for good frees the current blob and every version.
+    nodes::trash(&c.pool, a, f.id).await.unwrap();
+    nodes::delete_permanently(&c.pool, &c.storage, a, f.id)
+        .await
+        .unwrap();
+    assert_eq!(blob_rows(&c, &seen).await, 0);
+    for id in &seen {
+        assert!(!c.storage.blob_path(*id).exists());
+    }
+}
+
+#[tokio::test]
+async fn version_uploads_respect_the_quota() {
+    let c = ctx().await;
+    let a = user(&c, "alice").await;
+    sqlx::query("UPDATE users SET quota_bytes = 100 WHERE id = $1")
+        .bind(a)
+        .execute(&c.pool)
+        .await
+        .unwrap();
+    let f = upload(&c, a, None, "a.bin", &[1u8; 60]).await;
+    // 60 used; a 60-byte replacement would keep the old copy: 120 > 100.
+    assert!(matches!(
+        uploads::create_version(&c.pool, &c.storage, &c.limits, a, f.id, 60).await,
+        Err(CoreError::QuotaExceeded)
+    ));
+    assert!(
+        uploads::create_version(&c.pool, &c.storage, &c.limits, a, f.id, 30)
+            .await
+            .is_ok()
+    );
+}
+
+#[tokio::test]
+async fn comments_follow_roles() {
+    let c = ctx().await;
+    let (a, viewer, commenter, stranger) = (
+        user(&c, "alice").await,
+        user(&c, "viewer").await,
+        user(&c, "commenter").await,
+        user(&c, "eve").await,
+    );
+    let f = upload(&c, a, None, "doc.txt", b"x").await;
+    for (u, role) in [(viewer, "viewer"), (commenter, "commenter")] {
+        shares::add_user(
+            &c.pool,
+            a,
+            f.id,
+            &users::get(&c.pool, u).await.unwrap().email,
+            role,
+        )
+        .await
+        .unwrap();
+    }
+    assert!(matches!(
+        comments::add(&c.pool, viewer, f.id, "hi").await,
+        Err(CoreError::Forbidden)
+    ));
+    assert!(matches!(
+        comments::add(&c.pool, stranger, f.id, "hi").await,
+        Err(CoreError::NotFound)
+    ));
+    let mine = comments::add(&c.pool, commenter, f.id, "  first <b>  ")
+        .await
+        .unwrap();
+    assert_eq!(mine.body, "first <b>");
+    assert!(mine.can_edit && mine.can_delete);
+    let owner_note = comments::add(&c.pool, a, f.id, "second").await.unwrap();
+
+    let seen = comments::list(&c.pool, viewer, f.id).await.unwrap();
+    assert_eq!(seen.len(), 2);
+    assert!(seen.iter().all(|x| !x.can_edit && !x.can_delete));
+    assert!(matches!(
+        comments::list(&c.pool, stranger, f.id).await,
+        Err(CoreError::NotFound)
+    ));
+
+    // Only the author edits; author or item owner delete.
+    assert!(matches!(
+        comments::edit(&c.pool, a, mine.id, "hacked").await,
+        Err(CoreError::Forbidden)
+    ));
+    let edited = comments::edit(&c.pool, commenter, mine.id, "changed")
+        .await
+        .unwrap();
+    assert!(edited.edited_at.is_some());
+    assert!(matches!(
+        comments::delete(&c.pool, commenter, owner_note.id).await,
+        Err(CoreError::Forbidden)
+    ));
+    assert!(matches!(
+        comments::delete(&c.pool, stranger, mine.id).await,
+        Err(CoreError::NotFound)
+    ));
+    comments::delete(&c.pool, a, mine.id).await.unwrap();
+    comments::delete(&c.pool, a, owner_note.id).await.unwrap();
+    assert!(comments::list(&c.pool, a, f.id).await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn archives_list_a_folder_tree_safely() {
+    let c = ctx().await;
+    let a = user(&c, "alice").await;
+    let root = nodes::create_folder(&c.pool, a, None, "Projet")
+        .await
+        .unwrap();
+    let sub = nodes::create_folder(&c.pool, a, Some(root.id), "docs")
+        .await
+        .unwrap();
+    nodes::create_folder(&c.pool, a, Some(root.id), "vide")
+        .await
+        .unwrap();
+    upload(&c, a, Some(root.id), "a.txt", b"A").await;
+    upload(&c, a, Some(sub.id), "b.txt", b"BB").await;
+    let gone = upload(&c, a, Some(sub.id), "gone.txt", b"zzz").await;
+    nodes::trash(&c.pool, a, gone.id).await.unwrap();
+
+    let r = perms::node_ref(&c.pool, root.id).await.unwrap();
+    let entries = archive::collect(&c.pool, &[r]).await.unwrap();
+    let mut paths: Vec<_> = entries.iter().map(|e| e.path.clone()).collect();
+    paths.sort();
+    assert_eq!(
+        paths,
+        [
+            "Projet/",
+            "Projet/a.txt",
+            "Projet/docs/",
+            "Projet/docs/b.txt",
+            "Projet/vide/"
+        ]
+    );
+    assert!(
+        entries
+            .iter()
+            .filter(|e| e.blob_id.is_some())
+            .all(|e| e.size > 0)
+    );
+
+    // Two roots with the same name do not collide.
+    let other = nodes::create_folder(&c.pool, a, None, "Projet")
+        .await
+        .unwrap();
+    let r2 = perms::node_ref(&c.pool, other.id).await.unwrap();
+    let r1 = perms::node_ref(&c.pool, root.id).await.unwrap();
+    let both = archive::collect(&c.pool, &[r1, r2]).await.unwrap();
+    assert!(both.iter().any(|e| e.path == "Projet (2)/"));
+}
+
+#[tokio::test]
+async fn office_previews_are_requested_once_and_degrade_without_a_converter() {
+    let _guard = JOBS_LOCK.lock().await;
+    let c = ctx().await;
+    let a = user(&c, "alice").await;
+    let txt = upload(&c, a, None, "n.txt", b"hello").await;
+    assert_eq!(
+        office::request(&c.pool, a, txt.id).await.unwrap(),
+        "unsupported"
+    );
+
+    let doc = upload(&c, a, None, "Rapport.docx", b"PK-not-really-a-docx").await;
+    assert_eq!(
+        office::request(&c.pool, a, doc.id).await.unwrap(),
+        "pending"
+    );
+    assert_eq!(
+        office::request(&c.pool, a, doc.id).await.unwrap(),
+        "pending"
+    );
+    let queued: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM jobs WHERE kind = 'office_preview' AND payload->>'blob_id' = (SELECT blob_id::text FROM nodes WHERE id = $1)",
+    )
+    .bind(doc.id)
+    .fetch_one(&c.pool)
+    .await
+    .unwrap();
+    assert_eq!(queued, 1);
+
+    // A garbage document never produces a preview: the state is final either way.
+    let blob: Uuid = sqlx::query_scalar("SELECT blob_id FROM nodes WHERE id = $1")
+        .bind(doc.id)
+        .fetch_one(&c.pool)
+        .await
+        .unwrap();
+    office::generate(&c.pool, &c.storage, blob).await.unwrap();
+    let state = office::state_of(&c.pool, blob).await.unwrap();
+    assert!(
+        state == "unsupported" || state == "failed",
+        "state was {state}"
+    );
 }

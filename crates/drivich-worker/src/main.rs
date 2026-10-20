@@ -8,13 +8,16 @@ use drivich_core::config::Config;
 use drivich_core::db::{self, Pool};
 use drivich_core::jobs::{self, Job, kind};
 use drivich_core::storage::Storage;
-use drivich_core::{backups, nodes, thumbs, uploads};
+use drivich_core::{backups, nodes, office, thumbs, uploads};
 use sqlx::postgres::PgListener;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{Notify, Semaphore};
 use tracing_subscriber::EnvFilter;
 use uuid::Uuid;
+
+/// LibreOffice is heavy: convert one document at a time whatever the concurrency.
+static OFFICE_SLOT: Semaphore = Semaphore::const_new(1);
 
 #[derive(Clone)]
 struct Ctx {
@@ -51,6 +54,13 @@ async fn main() -> anyhow::Result<()> {
         storage,
         cfg: Arc::new(cfg.clone()),
     };
+
+    if office::converter_available().await {
+        let reset = office::reset_unsupported(&pool).await?;
+        tracing::info!(reset, "LibreOffice found: Office previews enabled");
+    } else {
+        tracing::info!("LibreOffice not installed in this image: Office previews disabled");
+    }
 
     let queued = jobs::requeue_pending(&pool).await?;
     tracing::info!(
@@ -187,6 +197,10 @@ async fn run(ctx: &Ctx, job: Job) {
                 let name = backups::create(&ctx.storage, &ctx.cfg.database_url).await?;
                 let pruned = backups::prune(&ctx.storage, ctx.cfg.backup_keep).await?;
                 tracing::info!(backup = %name, pruned, "database dump created");
+            }
+            kind::OFFICE_PREVIEW => {
+                let _slot = OFFICE_SLOT.acquire().await?;
+                office::generate(&ctx.pool, &ctx.storage, blob_id(&job)?).await?;
             }
             kind::GC_BLOBS => {
                 let n = thumbs::gc_orphan_blobs(&ctx.pool, &ctx.storage).await?;

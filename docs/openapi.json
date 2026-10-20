@@ -621,6 +621,90 @@
         }
       }
     },
+    "/api/v1/comments/{id}": {
+      "delete": {
+        "tags": [
+          "comments"
+        ],
+        "summary": "Delete a comment (its author or the item's owner)",
+        "operationId": "delete_comment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Comment id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "comments"
+        ],
+        "summary": "Edit your own comment",
+        "operationId": "edit_comment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Comment id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
     "/api/v1/health": {
       "get": {
         "tags": [
@@ -1084,6 +1168,56 @@
         ]
       }
     },
+    "/api/v1/nodes/zip": {
+      "get": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Download a selection of items as a .zip (streamed)",
+        "operationId": "zip_selection",
+        "parameters": [
+          {
+            "name": "ids",
+            "in": "query",
+            "description": "Comma-separated item ids (1 to 200)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "zip archive"
+          },
+          "400": {
+            "description": "Invalid selection or too many items",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many archives in progress",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
     "/api/v1/nodes/{id}": {
       "get": {
         "tags": [
@@ -1218,6 +1352,100 @@
           },
           "403": {
             "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/nodes/{id}/comments": {
+      "get": {
+        "tags": [
+          "comments"
+        ],
+        "summary": "Comments on an item, oldest first",
+        "operationId": "list_comments",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Item id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "comments"
+        ],
+        "summary": "Add a comment (commenter role or better)",
+        "operationId": "add_comment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Item id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Viewers cannot comment",
             "content": {
               "application/json": {
                 "schema": {
@@ -1425,6 +1653,83 @@
         ]
       }
     },
+    "/api/v1/nodes/{id}/preview": {
+      "get": {
+        "tags": [
+          "files"
+        ],
+        "summary": "The PDF rendition, once ready (404 before)",
+        "operationId": "preview",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "File id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF"
+          },
+          "404": {
+            "description": "Not ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Start (once) and report the PDF rendition of an Office document",
+        "operationId": "request_preview",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "File id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "State",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
     "/api/v1/nodes/{id}/restore": {
       "post": {
         "tags": [
@@ -1614,6 +1919,252 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/nodes/{id}/versions": {
+      "get": {
+        "tags": [
+          "versions"
+        ],
+        "summary": "Older versions of a file, newest first",
+        "operationId": "list_versions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "File id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Versions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/nodes/{id}/versions/{version}": {
+      "delete": {
+        "tags": [
+          "versions"
+        ],
+        "summary": "Delete an older version",
+        "operationId": "delete_version",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "File id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "description": "Version id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/nodes/{id}/versions/{version}/download": {
+      "get": {
+        "tags": [
+          "versions"
+        ],
+        "summary": "Download an older version",
+        "operationId": "download_version",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "File id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "description": "Version id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File bytes"
+          },
+          "404": {
+            "description": "Unknown version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/nodes/{id}/versions/{version}/restore": {
+      "post": {
+        "tags": [
+          "versions"
+        ],
+        "summary": "Make an older version current (the replaced content is kept as a version)",
+        "operationId": "restore_version",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "File id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "description": "Version id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Editors only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/nodes/{id}/zip": {
+      "get": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Download a folder as a .zip (streamed)",
+        "operationId": "zip_folder",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Folder id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "zip archive"
+          },
+          "400": {
+            "description": "Not a folder or too many items",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many archives in progress",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             }
@@ -1870,6 +2421,41 @@
         "responses": {
           "200": {
             "description": "JPEG image"
+          }
+        }
+      }
+    },
+    "/api/v1/public/{token}/nodes/{id}/zip": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Download a shared folder as a .zip",
+        "operationId": "public_zip",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "description": "Link token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Folder id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "zip archive"
           }
         }
       }
@@ -2748,6 +3334,99 @@
           }
         }
       },
+      "Comment": {
+        "type": "object",
+        "required": [
+          "id",
+          "node_id",
+          "author_id",
+          "author_name",
+          "author_avatar_version",
+          "body",
+          "created_at",
+          "can_edit",
+          "can_delete"
+        ],
+        "properties": {
+          "author_avatar_version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "author_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "author_name": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "can_delete": {
+            "type": "boolean",
+            "description": "The caller wrote it or owns the item."
+          },
+          "can_edit": {
+            "type": "boolean",
+            "description": "The caller wrote it."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "edited_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "node_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "CommentBody": {
+        "type": "object",
+        "required": [
+          "body"
+        ],
+        "properties": {
+          "body": {
+            "type": "string"
+          }
+        }
+      },
+      "CommentEnvelope": {
+        "type": "object",
+        "required": [
+          "comment"
+        ],
+        "properties": {
+          "comment": {
+            "$ref": "#/components/schemas/Comment"
+          }
+        }
+      },
+      "CommentsResponse": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Comment"
+            }
+          }
+        }
+      },
       "Counts": {
         "type": "object",
         "required": [
@@ -3155,12 +3834,15 @@
       "NewUpload": {
         "type": "object",
         "required": [
-          "name",
           "size"
         ],
         "properties": {
           "name": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Required unless `replace_node_id` is set."
           },
           "parent_id": {
             "type": [
@@ -3168,6 +3850,14 @@
               "null"
             ],
             "format": "uuid"
+          },
+          "replace_node_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Upload a new version of this file instead of creating a new one."
           },
           "size": {
             "type": "integer",
@@ -3274,6 +3964,17 @@
           }
         }
       },
+      "NodeEnvelope": {
+        "type": "object",
+        "required": [
+          "node"
+        ],
+        "properties": {
+          "node": {
+            "$ref": "#/components/schemas/Node"
+          }
+        }
+      },
       "NodePatch": {
         "type": "object",
         "properties": {
@@ -3362,6 +4063,18 @@
             "items": {
               "$ref": "#/components/schemas/BreadcrumbItem"
             }
+          }
+        }
+      },
+      "PreviewResponse": {
+        "type": "object",
+        "required": [
+          "state"
+        ],
+        "properties": {
+          "state": {
+            "type": "string",
+            "description": "none, pending, ready, failed or unsupported"
           }
         }
       },
@@ -3826,6 +4539,58 @@
             }
           }
         }
+      },
+      "Version": {
+        "type": "object",
+        "required": [
+          "id",
+          "size",
+          "mime",
+          "saved_at",
+          "replaced_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mime": {
+            "type": "string"
+          },
+          "replaced_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When it stopped being the current content."
+          },
+          "saved_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this content was first stored."
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "VersionsResponse": {
+        "type": "object",
+        "required": [
+          "items",
+          "max_versions"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Version"
+            }
+          },
+          "max_versions": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
       }
     },
     "securitySchemes": {
@@ -3855,6 +4620,12 @@
     },
     {
       "name": "sharing"
+    },
+    {
+      "name": "versions"
+    },
+    {
+      "name": "comments"
     },
     {
       "name": "public"

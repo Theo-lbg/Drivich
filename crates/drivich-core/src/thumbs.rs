@@ -214,6 +214,7 @@ pub async fn index_text(pool: &Pool, storage: &Storage, blob: Uuid) -> Result<()
 pub async fn gc_orphan_blobs(pool: &Pool, storage: &Storage) -> Result<u64> {
     let ids: Vec<Uuid> = sqlx::query_scalar(
         "DELETE FROM blobs b WHERE NOT EXISTS (SELECT 1 FROM nodes n WHERE n.blob_id = b.id) \
+         AND NOT EXISTS (SELECT 1 FROM node_versions v WHERE v.blob_id = b.id) \
          AND b.created_at < now() - interval '1 hour' RETURNING b.id",
     )
     .fetch_all(pool)

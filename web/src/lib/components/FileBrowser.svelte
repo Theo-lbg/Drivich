@@ -5,7 +5,7 @@
 	import { goto } from '$app/navigation';
 	import { api, ApiError, type SearchOptions } from '$lib/api';
 	import {
-		askDelete, askMove, askRename, askShare, deleteForever, downloadNode, folderHref, openNode, restoreNodes, setStarred, trashNodes
+		askDelete, askMove, askNewVersion, askRename, askShare, deleteForever, downloadMany, downloadNode, folderHref, openNode, restoreNodes, setStarred, trashNodes
 	} from '$lib/actions';
 	import { daysLeft, formatBytes, formatDate, typeLabel } from '$lib/format';
 	import { dialogs, nav, pickers } from '$lib/state/app.svelte';
@@ -288,9 +288,11 @@
 		const owner = targets.every(isOwner);
 		const editor = targets.every(canEdit);
 		const out: MenuItem[] = [];
+		if (!one) out.push({ label: t('file_browser.telecharger_zip'), icon: 'download', run: () => downloadMany(targets) });
 		if (one) {
 			out.push({ label: t('file_browser.ouvrir'), icon: one.kind === 'folder' ? 'folder_open' : 'open_in_new', run: () => open(one) });
-			if (one.kind === 'file') out.push({ label: t('file_browser.telecharger'), icon: 'download', run: () => downloadNode(one) });
+			out.push({ label: one.kind === 'folder' ? t('file_browser.telecharger_zip') : t('file_browser.telecharger'), icon: 'download', run: () => downloadNode(one) });
+			if (one.kind === 'file' && editor) out.push({ label: t('file_browser.new_version'), icon: 'upload_file', run: () => askNewVersion(one) });
 			out.push({ divider: true });
 			if (editor) out.push({ label: t('dialogs.renommer'), icon: 'edit', hint: 'F2', run: () => askRename(one) });
 			if (owner) out.push({ label: t('file_browser.partager'), icon: 'share', run: () => askShare(one) });
@@ -565,9 +567,7 @@
 					<button class="btn" onclick={() => restoreNodes(selectedItems)}><Icon name="restore_from_trash" size={20} />{t('file_browser.restaurer')}</button>
 					<button class="btn danger" onclick={() => askDelete(selectedItems)}><Icon name="delete_forever" size={20} />{t('dialogs.supprimer_definitivement_2')}</button>
 				{:else}
-					{#if selectedItems.length === 1 && selectedItems[0].kind === 'file'}
-						<button class="icon-btn" title={t('file_browser.telecharger')} aria-label={t('file_browser.telecharger')} onclick={() => downloadNode(selectedItems[0])}><Icon name="download" size={22} /></button>
-					{/if}
+					<button class="icon-btn" title={selectedItems.length === 1 && selectedItems[0].kind === 'file' ? t('file_browser.telecharger') : t('file_browser.telecharger_zip')} aria-label={t('file_browser.telecharger')} onclick={() => downloadMany(selectedItems)}><Icon name="download" size={22} /></button>
 					{#if selectedItems.length === 1 && isOwner(selectedItems[0])}
 						<button class="icon-btn" title={t('file_browser.partager')} aria-label={t('file_browser.partager')} onclick={() => askShare(selectedItems[0])}><Icon name="share" size={22} /></button>
 					{/if}
@@ -661,7 +661,7 @@
 								{#if mode === 'trash'}
 									<button class="icon-btn small hov" title={t('file_browser.restaurer')} aria-label={t('file_browser.restaurer')} onclick={() => restoreNodes([n])}><Icon name="restore_from_trash" size={20} /></button>
 								{:else}
-									{#if n.kind === 'file'}<button class="icon-btn small hov" title={t('file_browser.telecharger')} aria-label={t('file_browser.telecharger')} onclick={() => downloadNode(n)}><Icon name="download" size={20} /></button>{/if}
+									<button class="icon-btn small hov" title={n.kind === 'folder' ? t('file_browser.telecharger_zip') : t('file_browser.telecharger')} aria-label={t('file_browser.telecharger')} onclick={() => downloadNode(n)}><Icon name="download" size={20} /></button>
 									{#if isOwner(n)}<button class="icon-btn small hov" title={t('file_browser.partager')} aria-label={t('file_browser.partager')} onclick={() => askShare(n)}><Icon name="person_add" size={20} /></button>{/if}
 								{/if}
 								<button class="icon-btn small" title={t('file_browser.plus_dactions')} aria-label={t('file_browser.plus_dactions')} onclick={(e) => kebab(e, n)}><Icon name="more_vert" size={20} /></button>

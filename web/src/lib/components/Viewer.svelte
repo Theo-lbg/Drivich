@@ -2,10 +2,11 @@
 <!-- Copyright (c) 2026 Theo-lbg -->
 <script lang="ts">
 	import { t } from '$lib/i18n/index.svelte';
-	import { urls } from '$lib/api';
+	import { api, urls } from '$lib/api';
 	import { askShare, downloadNode } from '$lib/actions';
-	import { classify, CLASS_COLOR, CLASS_ICON, formatBytes } from '$lib/format';
+	import { classify, CLASS_COLOR, CLASS_ICON, formatBytes, isOffice } from '$lib/format';
 	import { viewer } from '$lib/state/app.svelte';
+	import Comments from './Comments.svelte';
 	import Icon from './Icon.svelte';
 
 	const node = $derived(viewer.items[viewer.index]);
@@ -15,6 +16,11 @@
 	let zoom = $state(1);
 	let imgFailed = $state(false);
 	let uiHidden = $state(false);
+	let showComments = $state(false);
+	/** State of the PDF rendition of an Office document (made by the server on first view). */
+	let officeState = $state<'pending' | 'ready' | 'failed' | 'unsupported'>('pending');
+	const office = $derived(!!node && !viewer.token && isOffice(node));
+	const officeCapable = $derived(!!node && isOffice(node));
 
 	const src = $derived(node ? (viewer.token ? urls.publicContent(viewer.token, node.id) : urls.content(node.id)) : '');
 	const downloadHref = $derived(node ? (viewer.token ? urls.publicDownload(viewer.token, node.id) : urls.download(node.id)) : '');
@@ -26,6 +32,24 @@
 		zoom = 1;
 		imgFailed = false;
 		if (!n) return;
+		if (!viewer.token && isOffice(n)) {
+			officeState = 'pending';
+			let stop = false;
+			(async () => {
+				while (!stop) {
+					try {
+						const r = await api.requestPreview(n.id);
+						officeState = r.state === 'none' ? 'pending' : r.state;
+						if (r.state !== 'pending' && r.state !== 'none') return;
+					} catch {
+						officeState = 'failed';
+						return;
+					}
+					await new Promise((res) => setTimeout(res, 2000));
+				}
+			})();
+			return () => (stop = true);
+		}
 		if ((kind === 'text' || kind === 'code') && n.size <= 2 * 1024 * 1024) {
 			const ctl = new AbortController();
 			fetch(src, { credentials: 'same-origin', signal: ctl.signal })
@@ -77,6 +101,9 @@
 					<button class="icon-btn" aria-label={t('viewer.zoom_arriere')} onclick={() => (zoom = Math.max(0.25, zoom - 0.25))}><Icon name="zoom_out" size={24} /></button>
 					<button class="icon-btn" aria-label={t('viewer.zoom_avant')} onclick={() => (zoom = Math.min(5, zoom + 0.25))}><Icon name="zoom_in" size={24} /></button>
 				{/if}
+				{#if !viewer.token}
+					<button class="icon-btn" class:on={showComments} aria-pressed={showComments} aria-label={t('comments.title')} title={t('comments.title')} onclick={() => (showComments = !showComments)}><Icon name="comment" size={24} /></button>
+				{/if}
 				{#if !viewer.token && node.role === 'owner'}
 					<button class="icon-btn" aria-label={t('file_browser.partager')} onclick={() => { close(); askShare(node); }}><Icon name="person_add" size={24} /></button>
 				{/if}
@@ -100,6 +127,10 @@
 				{/key}
 			{:else if kind === 'pdf'}
 				{#key node.id}<iframe title={node.name} src={src}></iframe>{/key}
+			{:else if office && officeState === 'ready'}
+				{#key node.id}<iframe title={node.name} src={urls.preview(node.id)}></iframe>{/key}
+			{:else if office && officeState === 'pending'}
+				<div class="none"><Icon name={CLASS_ICON[kind]} size={96} /><h2>{t('viewer.office_preparing')}</h2><p>{node.name}</p></div>
 			{:else if (kind === 'text' || kind === 'code') && text !== null}
 				<pre class="text">{text}</pre>
 			{:else if (kind === 'text' || kind === 'code') && !textError && node.size <= 2 * 1024 * 1024}
@@ -109,8 +140,13 @@
 					<Icon name={CLASS_ICON[kind]} size={96} />
 					<h2>{t('viewer.apercu_non_disponible')}</h2>
 					<p>{node.name} · {formatBytes(node.size)}</p>
+					{#if officeCapable && !viewer.token}<p class="why">{t('viewer.office_unavailable')}</p>{/if}
 					<button class="btn filled" onclick={download}><Icon name="download" size={20} />{t('file_browser.telecharger')}</button>
 				</div>
+			{/if}
+
+			{#if showComments && !viewer.token}
+				<aside class="side" aria-label={t('comments.title')}><Comments {node} /></aside>
 			{/if}
 
 			{#if viewer.index > 0}
@@ -225,6 +261,29 @@
 	.none p,
 	.audio p {
 		margin: 0;
+	}
+	.side {
+		position: absolute;
+		right: 0;
+		top: 64px;
+		bottom: 0;
+		width: min(380px, 100%);
+		overflow: auto;
+		padding: 0 20px 20px;
+		background: var(--surface);
+		color: var(--text);
+		z-index: 3;
+		box-shadow: var(--shadow-2);
+	}
+	.side :global(.comments) {
+		border-top: 0;
+	}
+	.why {
+		max-width: 460px;
+		font-size: 13px;
+	}
+	header :global(.icon-btn.on) {
+		background: rgba(255, 255, 255, 0.2);
 	}
 	.nav {
 		position: absolute;

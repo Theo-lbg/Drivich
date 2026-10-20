@@ -22,9 +22,13 @@ Base : `/api/v1`. JSON partout, sauf octets de fichiers. Authentification par co
 | `POST /nodes/{id}/trash` · `/restore` · `DELETE /nodes/{id}` · `POST /trash/empty` | corbeille |
 | `POST /nodes/batch` | `{ids, action: trash\|restore\|star\|unstar\|move\|delete, parent_id?}` |
 | `GET /nodes/{id}/download` · `/content` · `/thumbnail` · `POST /nodes/{id}/open` | octets (Range, ETag), aperçu inline, miniature, « récent » |
+| `GET /nodes/{id}/zip` · `GET /nodes/zip?ids=a,b,c` · `GET /public/{token}/nodes/{id}/zip` | dossier ou sélection en `.zip` streamé (429 si trop d'archives en cours, 400 au-delà de 50 000 éléments) |
+| `POST /nodes/{id}/preview` · `GET /nodes/{id}/preview` | aperçu PDF d'un document Office : `POST` lance la conversion une fois et renvoie `{state: pending\|ready\|failed\|unsupported}`, `GET` sert le PDF quand il est prêt (404 avant) |
+| `GET /nodes/{id}/versions` · `GET …/versions/{v}/download` · `POST …/versions/{v}/restore` · `DELETE …/versions/{v}` | historique d'un fichier ; lecture : lecteur, restauration et suppression : éditeur |
+| `GET\|POST /nodes/{id}/comments` · `PATCH\|DELETE /comments/{id}` | commentaires ; écrire : commentateur ou plus ; modifier : l'auteur ; supprimer : l'auteur ou le propriétaire |
 
 ## Téléversement reprenable
-`POST /uploads {parent_id,name,size}` → `{upload:{id,received,total_size}}` · `HEAD /uploads/{id}` (en-tête `Upload-Offset`) · `PATCH /uploads/{id}` (en-tête `Upload-Offset: N`, corps = octets ; 409 + `Upload-Offset` si décalage ; la réponse du dernier bloc contient `node`) · `DELETE /uploads/{id}`.
+`POST /uploads {parent_id,name,size}` (ou `{replace_node_id,size}` pour une **nouvelle version** d'un fichier existant, rôle éditeur) → `{upload:{id,received,total_size}}` · `HEAD /uploads/{id}` (en-tête `Upload-Offset`) · `PATCH /uploads/{id}` (en-tête `Upload-Offset: N`, corps = octets ; 409 + `Upload-Offset` si décalage ; la réponse du dernier bloc contient `node`) · `DELETE /uploads/{id}`.
 
 ## Recherche
 `GET /search/suggest?q=` (≤ 8) · `GET /search?q=&name=&words=&type=&owner=&modified_from=&modified_to=&location=drive\|shared\|starred\|trash&in_folder=&cursor=`.

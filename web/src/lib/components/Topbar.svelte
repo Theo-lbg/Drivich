@@ -32,7 +32,7 @@
 	</a>
 	<SearchBar onmenu={() => (ui.drawer = !ui.drawer)} />
 	<div class="right">
-		<a class="icon-btn" href="https://github.com/Theo-lbg" target="_blank" rel="noreferrer" title={t('topbar.aide_et_projet')} aria-label={t('topbar.aide')}><Icon name="help" size={24} /></a>
+		<a class="icon-btn help" href="https://github.com/Theo-lbg" target="_blank" rel="noreferrer" title={t('topbar.aide_et_projet')} aria-label={t('topbar.aide')}><Icon name="help" size={24} /></a>
 		<a class="icon-btn" href="/settings" title={t('topbar.parametres')} aria-label={t('topbar.parametres')}><Icon name="settings" size={24} /></a>
 		<button class="icon-btn" data-apps-button title={t('apps_menu.applications_drivich')} aria-label={t('app_rail.applications')} aria-haspopup="menu" aria-expanded={apps} onclick={() => (apps = !apps)}><Icon name="apps" size={24} /></button>
 		{#if session.user}
@@ -105,6 +105,15 @@
 	}
 	.acct:hover {
 		box-shadow: 0 0 0 4px var(--hover-bg);
+	}
+	@media (max-width: 520px) {
+		.help {
+			display: none;
+		}
+		.top {
+			gap: 4px;
+			padding-right: 4px;
+		}
 	}
 	@media (max-width: 900px) {
 		.brand {

@@ -81,7 +81,8 @@
 		cleanup_uploads: t('server.nettoyage_des_televersements'),
 		cleanup_sessions: t('server.nettoyage_des_sessions'),
 		gc_blobs: t('server.fichiers_orphelins'),
-		db_dump: t('server.kind_db_dump')
+		db_dump: t('server.kind_db_dump'),
+		office_preview: t('server.kind_office_preview')
 	});
 
 	const grouped = $derived.by(() => {
