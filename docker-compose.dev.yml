@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (c) 2026 Theo-lbg
+#
+# Development helper: only PostgreSQL, published on 127.0.0.1:55432, so you can
+# run the API and worker with `cargo run` and the web app with `npm run dev`.
+#
+#   docker compose -f docker-compose.dev.yml up -d
+#   export DATABASE_URL=postgres://drivich:dev-only@127.0.0.1:55432/drivich
+
+name: drivich-dev
+
+services:
+  database:
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    environment:
+      POSTGRES_USER: drivich
+      POSTGRES_PASSWORD: dev-only   # throwaway password: this database is local-only
+      POSTGRES_DB: drivich
+    ports:
+      - "127.0.0.1:55432:5432"
+    shm_size: 128mb
+    tmpfs:
+      - /var/lib/postgresql/data   # nothing is kept between runs
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U drivich -d drivich"]
+      interval: 5s
+      timeout: 5s
+      retries: 10

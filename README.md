@@ -1,1 +1,103 @@
+<p align="center"><img src="assets/logo-icon-256.png" alt="Drivich" width="120"></p>
+
 # Drivich
+
+**Votre Drive, sur votre serveur.** Drivich est une alternative open source, légère et auto-hébergeable à Google Drive : une application web fidèle à l'esprit de Drive, un backend **Rust** performant, PostgreSQL pour les métadonnées, et vos fichiers sur votre propre disque.
+
+> Copyright © 2026 Theo-lbg — licence [AGPL-3.0-or-later](LICENSE). Projet indépendant, sans lien avec Google ni Immich (voir [NOTICE](NOTICE)).
+
+## Ce qui fonctionne aujourd'hui
+
+| | |
+|---|---|
+| **Fichiers** | dossiers, téléversement (bouton, glisser-déposer, dossiers entiers), **reprise des téléversements interrompus**, téléchargement avec `Range`/`ETag`, renommer, déplacer (y compris par glisser-déposer), corbeille (30 j), favoris, récents |
+| **Immich** | adresse de votre Immich réglable dans Paramètres (personnelle ou par défaut du serveur) : icône dans le menu des applications (en haut à droite) et dans la barre latérale droite, qui l'ouvre dans un nouvel onglet ; l'icône affichée est celle que votre propre Immich sert (rien d'Immich n'est embarqué), avec une icône générique en repli |
+| **Photo de profil** | chaque utilisateur peut ajouter, changer ou supprimer sa photo (Paramètres › Compte) ; elle est recadrée en carré, redimensionnée et ré-encodée côté serveur (métadonnées EXIF supprimées), et s'affiche dans la barre du haut, les listes, le partage et l'administration |
+| **Apparence** | thème **clair, sombre ou automatique** (suit les réglages de l’appareil), au choix dans le menu du compte ou dans Paramètres › Compte |
+| **Visualisation** | liste et grille, tri, filtres (type, propriétaire, date), sélection multiple, menu contextuel, raccourcis clavier, chargement progressif (pagination par curseur), miniatures générées en arrière-plan (images, vidéos), visionneuse intégrée : images, vidéos, audio, PDF, texte et code |
+| **Récents** | regroupés par date (Aujourd’hui, Hier, Cette semaine…) avec les filtres Type, Contacts, Date de modification et Source ; incluent les fichiers partagés avec vous |
+| **Recherche** | suggestions pendant la frappe, page de résultats avec filtres, **recherche avancée**, recherche dans le **contenu** des fichiers texte |
+| **Partage** | avec des utilisateurs (lecteur / commentateur / éditeur, hérité par les sous-dossiers), **liens publics** (expiration, révocation), « Partagés avec moi » |
+| **Langues** | interface en **français** (par défaut), English, Español et Deutsch ; choix par utilisateur dans Paramètres › Compte (ou « automatique » = langue du navigateur), aussi sur les pages de connexion ; ajouter une langue = un fichier JSON dans `web/src/lib/i18n/locales/` |
+| **Administration** | comptes, quotas, inscriptions, état du serveur, de la base et des tâches ; **pause et concurrence par type de tâche** ; **sauvegardes automatiques de la base** (dump quotidien, 14 conservés, téléchargeables) |
+| **Sécurité** | Argon2id, sessions révocables, CSRF, autorisations **uniquement côté serveur**, aucune synchronisation avec vos fichiers locaux |
+
+Limites connues (voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)) : pas encore de téléchargement de dossier en .zip, d'aperçu Office, de commentaires, de versions de fichiers ni d'application mobile ; l'API est décrite par un schéma **OpenAPI** généré ([docs/openapi.json](docs/openapi.json), servi aussi sur `/api/v1/openapi.json`) en plus de [docs/API.md](docs/API.md).
+
+## Prérequis
+
+- **Docker Engine avec le plugin Compose ≥ 2.20** (le fichier central utilise `include`) ; la commande `docker compose` (pas l'ancien `docker-compose`).
+- Un système de fichiers Unix (EXT4, ZFS, APFS…) avec droits utilisateur/groupe pour `UPLOAD_LOCATION` et `DB_DATA_LOCATION`. **Jamais la base sur un partage réseau** (NFS/SMB), ni sur NTFS/FAT (sous Windows, utilisez un volume Docker pour la base).
+- Environ 1 Go de RAM libre pour la stack au repos ; la base est plafonnée à 512 Mo par défaut (`DRIVICH_DB_MEM`), à augmenter pour de gros volumes.
+
+## Installation (Docker)
+
+```bash
+git clone https://github.com/Theo-lbg/Drivich.git && cd Drivich   # adaptez l'URL de votre dépôt
+scripts/init-env.sh              # crée .env avec un mot de passe de base aléatoire
+docker compose up -d --build
+```
+
+Ouvrez <http://localhost:2283> : la première visite crée le compte **administrateur**.
+
+- Une image par service : `server/Dockerfile`, `worker/Dockerfile`, `web/Dockerfile` ; PostgreSQL utilise l'image officielle.
+- `docker-compose.yml` assemble les deux stacks : [`compose/backend.yml`](compose/backend.yml) (base, API, worker) et [`compose/frontend.yml`](compose/frontend.yml) (web).
+- Seul le port du web est publié ; la base n'est joignable que par l'API et le worker.
+- Données, avec les mêmes variables qu'Immich : `UPLOAD_LOCATION` (défaut `./library` : fichiers et miniatures) et `DB_DATA_LOCATION` (défaut `./postgres` : base). **Sauvegardez les deux ensemble.** `scripts/init-env.sh` crée ces dossiers et règle `DRIVICH_UID/GID` sur votre utilisateur pour que les conteneurs puissent y écrire.
+- Derrière HTTPS : mettez `DRIVICH_COOKIE_SECURE=true` dans `.env`.
+- Mémoire visée au repos : quelques dizaines de Mo pour le web et l'API, la base selon son usage ; limites réglables dans `.env`.
+
+### Sécurité du stockage (vérification des volumes)
+
+Au démarrage, le serveur et le worker écrivent puis relisent un fichier `.drivich` dans chaque dossier de données (comme la vérification de montage d'Immich) : cela détecte les droits incorrects. Surtout, si la base connaît des fichiers mais que `library/files` est vide et sans marqueur, c'est presque sûrement qu'un disque n'est **pas monté** : Drivich refuse alors de démarrer au lieu de créer une seconde bibliothèque vide. Contournement (à vos risques) : `DRIVICH_IGNORE_MOUNT_CHECK_ERRORS=true`.
+
+### Mise à jour et sauvegarde
+
+```bash
+git pull && docker compose up -d --build          # les migrations s'appliquent au démarrage
+# Attention : changer de version MAJEURE de PostgreSQL (17 → 18…) exige un dump puis une restauration, pas un simple changement d'image.
+docker compose exec database pg_dump -U drivich drivich > drivich.sql   # base
+tar czf drivich-library.tgz library                                         # fichiers
+```
+
+À sauvegarder **ensemble** : la base (`pg_dump`) et `library/files` + `library/avatars`. `library/cache` (miniatures) se reconstruit seul ; `library/tmp` (téléversements en cours) peut être ignoré. Sauvegardez la base d'abord, puis les fichiers, ou arrêtez le serveur pendant la sauvegarde : sinon la base restaurée peut référencer des fichiers absents de la copie. La base ne contient **que** les métadonnées, jamais le contenu des fichiers, et les fichiers sont stockés sous des identifiants (`files/ab/cd/<uuid>`) : sans la base, ils ne sont pas lisibles par nom.
+
+### Images de base épinglées
+
+Comme Immich, les images de base sont épinglées par empreinte (`image:tag@sha256:…`) : un build est reproductible et ne change pas sans que vous le décidiez. Pour les mettre à jour :
+
+```bash
+docker buildx imagetools inspect postgres:17-alpine | grep -m1 Digest   # nouvelle empreinte
+# remplacez-la dans compose/backend.yml, server/Dockerfile, worker/Dockerfile, web/Dockerfile et .github/workflows/ci.yml
+```
+
+## Développement
+
+Prérequis : Rust ≥ 1.85, Node ≥ 22, Docker (pour PostgreSQL).
+
+```bash
+docker compose -f docker-compose.dev.yml up -d        # PostgreSQL seul, sur 127.0.0.1:55432 (jetable)
+export DATABASE_URL=postgres://drivich:dev-only@127.0.0.1:55432/drivich
+cargo run -p drivich-server &      # API sur :2283
+cargo run -p drivich-worker &      # tâches de fond
+cd web && npm ci && npm run dev    # interface sur :5173 (proxy /api → :2283)
+```
+
+Tests : `cargo test --workspace` (35 tests dont des tests d'intégration sur PostgreSQL), `scripts/smoke.sh` (61 vérifications de bout en bout sur une API lancée), `cd web && npm run check`.
+
+## Organisation du dépôt
+
+```
+crates/drivich-core     logique métier : permissions, nœuds, upload, recherche, jobs, miniatures
+crates/drivich-server   API HTTP (axum)
+crates/drivich-worker   file de tâches (miniatures, empreintes, indexation, nettoyage)
+web/                    interface SvelteKit (SPA) + nginx
+server/ worker/ web/    Dockerfile de chaque service
+compose/                stacks backend et frontend
+docs/                   architecture et API
+scripts/                init-env.sh, smoke.sh
+```
+
+## Licence
+
+AGPL-3.0-or-later. Si vous modifiez Drivich et le proposez comme service réseau, vous devez publier vos modifications sous la même licence. Voir [LICENSE](LICENSE) et [NOTICE](NOTICE).

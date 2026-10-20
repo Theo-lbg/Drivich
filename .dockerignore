@@ -1,0 +1,13 @@
+target
+web
+.git
+.env
+.env.*
+data
+*.md
+docs
+scripts
+drivich-logo-*.png
+assets
+library
+postgres

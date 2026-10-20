@@ -1,0 +1,39 @@
+Drivich
+Copyright (c) 2026 Theo-lbg
+
+Drivich is free software: you can redistribute it and/or modify it under the
+terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version. See the LICENSE file.
+
+Drivich is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+A PARTICULAR PURPOSE.
+
+Branding
+--------
+The Drivich name and the logo files (drivich-logo-icone.png, drivich-logo-texte.png
+and the images derived from them in assets/ and web/static/) are
+Copyright (c) 2026 Theo-lbg, all rights reserved. They are not covered by the
+AGPL: do not use them to present a modified version as the official Drivich.
+
+Third-party components (installed from their own registries, not vendored)
+--------------------------------------------------------------------------
+- Rust crates (axum, tokio, sqlx, image, argon2, serde, ...): MIT and/or Apache-2.0.
+  Run `cargo tree` for the full list.
+- Svelte and SvelteKit: MIT.
+- Material Symbols icons (@material-symbols/svg-400): Apache-2.0.
+- Roboto font (@fontsource/roboto): SIL Open Font License 1.1.
+- PostgreSQL: PostgreSQL License. nginx: BSD-2-Clause. FFmpeg (optional, worker
+  image only): LGPL-2.1+/GPL, installed from Debian packages.
+
+Immich logo: Drivich does not include or redistribute Immich's logo. When you set
+the address of your own Immich server in the settings, your browser loads the
+icon that this server already serves (for example /favicon-96.png) and displays
+it next to the link that opens it. "Immich" is a trademark of its owners.
+
+Drivich is an independent project. It is not affiliated with, endorsed by or
+derived from the source code of Google Drive or Immich. Its interface takes
+inspiration from the look and feel of Google Drive, and its architecture from
+the published design principles of Immich; no code from either was used.
+"Google Drive" and "Immich" are trademarks of their respective owners.
