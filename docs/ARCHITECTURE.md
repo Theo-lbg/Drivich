@@ -60,7 +60,7 @@ Drivich **n'est pas une copie** de l'architecture d'Immich : il en reprend les p
 | monorepo : `server/`, `web/`, `mobile/`, `machine-learning/`, `cli`, `open-api/`, `docker/`, `docs/`, `e2e/`, `i18n/`, `design/`, `deployment/`, `.github/` | `crates/` (core, server, worker), `web/`, `server/` et `worker/` (Dockerfile), `compose/`, `docs/`, `scripts/`, `assets/`, `.github/` | pas de mobile, de CLI, de service ML (hors périmètre) ; `scripts/smoke.sh` tient lieu d'`e2e/` |
 | un Dockerfile par service dans le dossier du service | idem (`server/`, `worker/`, `web/`) | aligné |
 | `docker/docker-compose.yml` + `example.env`, un seul fichier | `docker-compose.yml` central qui `include` deux stacks + `.env.example` | **choix de l'utilisateur** (deux stacks) ; impose Compose ≥ 2.20 (documenté) |
-| images publiées sur ghcr, compose « release » | `release.yml` publie `ghcr.io/theo-lbg/drivich-{server,worker,web}` (amd64 + arm64) sur étiquette `v*`, avec `deployment/docker-compose.release.yml` | **ajouté** (rien n'est publié tant qu'aucune étiquette n'est poussée) |
+| images publiées sur ghcr, compose « release » | `release.yml` publie `ghcr.io/theo-lbg/drivich-{server,worker,web}` (amd64 + arm64) sur étiquette `v*` ; la release joint `deployment/docker-compose.release.yml` (sous le nom `docker-compose.yml`, épinglé à sa version), `example.env` et `init-env.sh` | **ajouté** (rien n'est publié tant qu'aucune étiquette n'est poussée) |
 | `renovate.json`, `CODEOWNERS`, modèles d'issues/PR, `.editorconfig`, `.gitattributes` | `.github/dependabot.yml`, `CODEOWNERS`, modèles, `.editorconfig`, `.gitattributes` | **ajoutés par cet audit** |
 
 ### Services et données

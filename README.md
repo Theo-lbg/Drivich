@@ -37,20 +37,39 @@ Limites connues (voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)) : pas d'appl
 
 ## Installation (Docker)
 
+Deux façons : depuis une **release** (images déjà construites, rien à compiler : recommandé pour un serveur ou un mini PC) ou depuis les **sources** (la machine construit elle-même les images). Ouvrez ensuite <http://localhost:2283> (ou `http://<adresse-du-serveur>:2283` depuis une autre machine) : la première visite crée le compte **administrateur**.
+
+- Seul le port du web est publié ; la base n'est joignable que par l'API et le worker.
+- Données, avec les mêmes variables qu'Immich : `UPLOAD_LOCATION` (défaut `./library` : fichiers et miniatures) et `DB_DATA_LOCATION` (défaut `./postgres` : base). **Sauvegardez les deux ensemble.** `init-env.sh` crée ces dossiers et règle `DRIVICH_UID/GID` sur votre utilisateur pour que les conteneurs puissent y écrire.
+- Derrière HTTPS : mettez `DRIVICH_COOKIE_SECURE=true` dans `.env`.
+- Mémoire visée au repos : quelques dizaines de Mo pour le web et l'API, la base selon son usage ; limites réglables dans `.env`.
+
+### Depuis une release (sans compilation)
+
+```bash
+mkdir drivich && cd drivich
+curl -fL -O https://github.com/Theo-lbg/Drivich/releases/latest/download/docker-compose.yml \
+         -O https://github.com/Theo-lbg/Drivich/releases/latest/download/example.env \
+         -O https://github.com/Theo-lbg/Drivich/releases/latest/download/init-env.sh
+bash init-env.sh       # crée .env (mot de passe aléatoire, votre UID/GID), library/ et postgres/
+docker compose up -d
+```
+
+- Les images `ghcr.io/theo-lbg/drivich-{server,worker,web}` existent pour amd64 et arm64 ; le `docker-compose.yml` d'une release est épinglé à sa version.
+- Pour une version précise, remplacez `latest/download` par `download/v0.1.0` (par exemple) dans les adresses.
+- Vos réglages vivent dans `.env` : ne modifiez pas `docker-compose.yml`, il est remplacé à chaque mise à jour.
+
+### Depuis les sources
+
 ```bash
 git clone https://github.com/Theo-lbg/Drivich.git && cd Drivich   # adaptez l'URL de votre dépôt
 scripts/init-env.sh              # crée .env avec un mot de passe de base aléatoire
 docker compose up -d --build
 ```
 
-Ouvrez <http://localhost:2283> : la première visite crée le compte **administrateur**.
-
 - Une image par service : `server/Dockerfile`, `worker/Dockerfile`, `web/Dockerfile` ; PostgreSQL utilise l'image officielle.
 - `docker-compose.yml` assemble les deux stacks : [`compose/backend.yml`](compose/backend.yml) (base, API, worker) et [`compose/frontend.yml`](compose/frontend.yml) (web).
-- Seul le port du web est publié ; la base n'est joignable que par l'API et le worker.
-- Données, avec les mêmes variables qu'Immich : `UPLOAD_LOCATION` (défaut `./library` : fichiers et miniatures) et `DB_DATA_LOCATION` (défaut `./postgres` : base). **Sauvegardez les deux ensemble.** `scripts/init-env.sh` crée ces dossiers et règle `DRIVICH_UID/GID` sur votre utilisateur pour que les conteneurs puissent y écrire.
-- Derrière HTTPS : mettez `DRIVICH_COOKIE_SECURE=true` dans `.env`.
-- Mémoire visée au repos : quelques dizaines de Mo pour le web et l'API, la base selon son usage ; limites réglables dans `.env`.
+- La compilation (Rust et interface web) demande du temps et de la mémoire : sur une petite machine, préférez une release.
 
 ### Sécurité du stockage (vérification des volumes)
 
@@ -59,7 +78,11 @@ Au démarrage, le serveur et le worker écrivent puis relisent un fichier `.driv
 ### Mise à jour et sauvegarde
 
 ```bash
-git pull && docker compose up -d --build          # les migrations s'appliquent au démarrage
+# Les migrations s'appliquent au démarrage, dans les deux cas.
+# Release : récupérez le docker-compose.yml de la nouvelle version (vos réglages restent dans .env)
+curl -fLO https://github.com/Theo-lbg/Drivich/releases/latest/download/docker-compose.yml && docker compose pull && docker compose up -d
+# Sources
+git pull && docker compose up -d --build
 # Attention : changer de version MAJEURE de PostgreSQL (17 → 18…) exige un dump puis une restauration, pas un simple changement d'image.
 docker compose exec database pg_dump -U drivich drivich > drivich.sql   # base
 tar czf drivich-library.tgz library                                         # fichiers
