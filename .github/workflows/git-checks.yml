@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.base_ref == 'main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Check branch name respects naming conventions
@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.base_ref == 'main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Check commit name
@@ -85,7 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.base_ref == 'main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Check up to date
