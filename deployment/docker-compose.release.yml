@@ -1,0 +1,84 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (c) 2026 Theo-lbg
+#
+# Run Drivich from the published images, without building anything:
+#   curl -LO <release>/docker-compose.release.yml  &&  curl -L <release>/.env.example -o .env
+#   (set DB_PASSWORD in .env, run `mkdir library postgres`)
+#   docker compose -f docker-compose.release.yml up -d
+name: drivich
+
+services:
+  database:
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-drivich}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      POSTGRES_DB: ${DB_DATABASE_NAME:-drivich}
+      TZ: ${TZ:-Etc/UTC}
+    volumes:
+      - ${DB_DATA_LOCATION:-./postgres}:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    shm_size: 128mb
+    mem_limit: ${DRIVICH_DB_MEM:-512m}
+    networks: [backend]
+
+  server:
+    image: ghcr.io/theo-lbg/drivich-server:${DRIVICH_VERSION:-release}
+    restart: unless-stopped
+    depends_on:
+      database: { condition: service_healthy }
+    environment: &app-env
+      DATABASE_URL: postgres://${DB_USERNAME:-drivich}:${DB_PASSWORD}@database:5432/${DB_DATABASE_NAME:-drivich}
+      TZ: ${TZ:-Etc/UTC}
+      DRIVICH_DATA_DIR: /data
+      DRIVICH_MAX_FILE_BYTES: ${DRIVICH_MAX_FILE_BYTES:-0}
+      DRIVICH_SESSION_DAYS: ${DRIVICH_SESSION_DAYS:-30}
+      DRIVICH_COOKIE_SECURE: ${DRIVICH_COOKIE_SECURE:-false}
+      DRIVICH_TRUST_PROXY: "true"
+      DRIVICH_IGNORE_MOUNT_CHECK_ERRORS: ${DRIVICH_IGNORE_MOUNT_CHECK_ERRORS:-false}
+      DRIVICH_TRASH_DAYS: ${DRIVICH_TRASH_DAYS:-30}
+      DRIVICH_UPLOAD_TTL_HOURS: ${DRIVICH_UPLOAD_TTL_HOURS:-48}
+      RUST_LOG: ${RUST_LOG:-info}
+    user: "${DRIVICH_UID:-10001}:${DRIVICH_GID:-10001}"
+    volumes:
+      - ${UPLOAD_LOCATION:-./library}:/data
+    mem_limit: ${DRIVICH_SERVER_MEM:-256m}
+    networks: [backend, frontend]
+
+  worker:
+    image: ghcr.io/theo-lbg/drivich-worker:${DRIVICH_VERSION:-release}
+    restart: unless-stopped
+    depends_on:
+      database: { condition: service_healthy }
+    environment:
+      <<: *app-env
+      DRIVICH_BACKUPS_ENABLED: ${DRIVICH_BACKUPS_ENABLED:-true}
+      DRIVICH_BACKUP_KEEP: ${DRIVICH_BACKUP_KEEP:-14}
+      DRIVICH_WORKER_CONCURRENCY: ${DRIVICH_WORKER_CONCURRENCY:-2}
+      DRIVICH_THUMB_MAX_PX: ${DRIVICH_THUMB_MAX_PX:-480}
+    user: "${DRIVICH_UID:-10001}:${DRIVICH_GID:-10001}"
+    volumes:
+      - ${UPLOAD_LOCATION:-./library}:/data
+    mem_limit: ${DRIVICH_WORKER_MEM:-1g}
+    networks: [backend]
+
+  web:
+    image: ghcr.io/theo-lbg/drivich-web:${DRIVICH_VERSION:-release}
+    restart: unless-stopped
+    environment:
+      DRIVICH_SERVER_URL: http://server:2283
+      TZ: ${TZ:-Etc/UTC}
+    ports:
+      - "${DRIVICH_BIND_ADDRESS:-0.0.0.0}:${DRIVICH_PORT:-2283}:8080"
+    mem_limit: ${DRIVICH_WEB_MEM:-64m}
+    networks: [frontend]
+
+networks:
+  backend:
+    internal: true
+  frontend:

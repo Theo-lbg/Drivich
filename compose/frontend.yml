@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (c) 2026 Theo-lbg
+#
+# Frontend stack: static web app + reverse proxy to the API.
+# It joins the `frontend` network declared in compose/backend.yml, so use both
+# files together (the central docker-compose.yml does).
+
+services:
+  web:
+    build:
+      context: web
+      dockerfile: Dockerfile
+    image: drivich-web:${DRIVICH_VERSION:-local}
+    restart: unless-stopped
+    environment:
+      DRIVICH_SERVER_URL: http://server:2283
+      TZ: ${TZ:-Etc/UTC}
+    ports:
+      - "${DRIVICH_BIND_ADDRESS:-0.0.0.0}:${DRIVICH_PORT:-2283}:8080"
+    mem_limit: ${DRIVICH_WEB_MEM:-64m}
+    networks: [frontend]

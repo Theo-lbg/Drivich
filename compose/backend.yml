@@ -1,0 +1,87 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (c) 2026 Theo-lbg
+#
+# Backend stack: PostgreSQL + API server + background worker.
+# Run on its own:  docker compose -f compose/backend.yml --project-directory . up -d
+# (normally started through the central docker-compose.yml)
+
+services:
+  database:
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-drivich}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env (run scripts/init-env.sh)}
+      POSTGRES_DB: ${DB_DATABASE_NAME:-drivich}
+      TZ: ${TZ:-Etc/UTC}
+    volumes:
+      # Same variable as Immich: a host folder (default ./postgres) or any Docker volume name.
+      - ${DB_DATA_LOCATION:-./postgres}:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Postgres in Docker defaults to 64 MB of shared memory, which breaks parallel
+    # queries ("could not resize shared memory segment"); same setting as Immich.
+    shm_size: 128mb
+    mem_limit: ${DRIVICH_DB_MEM:-512m}
+    networks: [backend]
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    image: drivich-server:${DRIVICH_VERSION:-local}
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment: &app-env
+      DATABASE_URL: postgres://${DB_USERNAME:-drivich}:${DB_PASSWORD}@database:5432/${DB_DATABASE_NAME:-drivich}
+      TZ: ${TZ:-Etc/UTC}
+      DRIVICH_DATA_DIR: /data
+      DRIVICH_MAX_FILE_BYTES: ${DRIVICH_MAX_FILE_BYTES:-0}
+      DRIVICH_SESSION_DAYS: ${DRIVICH_SESSION_DAYS:-30}
+      DRIVICH_COOKIE_SECURE: ${DRIVICH_COOKIE_SECURE:-false}
+      DRIVICH_TRUST_PROXY: "true"   # the only thing in front of us is the web container
+      DRIVICH_IGNORE_MOUNT_CHECK_ERRORS: ${DRIVICH_IGNORE_MOUNT_CHECK_ERRORS:-false}
+      DRIVICH_TRASH_DAYS: ${DRIVICH_TRASH_DAYS:-30}
+      DRIVICH_UPLOAD_TTL_HOURS: ${DRIVICH_UPLOAD_TTL_HOURS:-48}
+      RUST_LOG: ${RUST_LOG:-info}
+    # Run as the owner of UPLOAD_LOCATION (scripts/init-env.sh sets these to your user).
+    user: "${DRIVICH_UID:-10001}:${DRIVICH_GID:-10001}"
+    volumes:
+      - ${UPLOAD_LOCATION:-./library}:/data
+    mem_limit: ${DRIVICH_SERVER_MEM:-256m}
+    networks: [backend, frontend]
+
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+      args:
+        WITH_FFMPEG: ${WITH_FFMPEG:-true}
+    image: drivich-worker:${DRIVICH_VERSION:-local}
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      <<: *app-env
+      DRIVICH_BACKUPS_ENABLED: ${DRIVICH_BACKUPS_ENABLED:-true}
+      DRIVICH_BACKUP_KEEP: ${DRIVICH_BACKUP_KEEP:-14}
+      DRIVICH_WORKER_CONCURRENCY: ${DRIVICH_WORKER_CONCURRENCY:-2}
+      DRIVICH_THUMB_MAX_PX: ${DRIVICH_THUMB_MAX_PX:-480}
+    user: "${DRIVICH_UID:-10001}:${DRIVICH_GID:-10001}"
+    volumes:
+      - ${UPLOAD_LOCATION:-./library}:/data
+    mem_limit: ${DRIVICH_WORKER_MEM:-1g}
+    networks: [backend]
+
+networks:
+  # The database is only reachable by the server and the worker.
+  backend:
+    internal: true
+  # Shared between the API server and the web container.
+  frontend:

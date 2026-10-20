@@ -1,1 +1,25 @@
+# Rust
+/target
+
+# Secrets and local data: never commit
+.env
+.env.*
+!.env.example
+/data
+/library
+/postgres
+
+# Web
+web/node_modules
+web/.svelte-kit
+web/build
+web/.vercel
+
+# Editors / OS
 .DS_Store
+.idea
+.vscode
+*.swp
+
+# Local tooling
+.claude

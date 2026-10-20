@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (c) 2026 Theo-lbg
+#
+# Base images are pinned by digest (like Immich does), so updates arrive as pull
+# requests instead of silently: Rust crates, npm packages, Dockerfile/compose
+# images and GitHub Actions.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /web
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directory: /server
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directory: /worker
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directory: /web
+    schedule: { interval: weekly }
+  - package-ecosystem: docker-compose
+    directory: /compose
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }

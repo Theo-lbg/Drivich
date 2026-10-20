@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (c) 2026 Theo-lbg
+#
+# Central compose file: both stacks, containerised.
+#   backend : compose/backend.yml   (database, server, worker)
+#   frontend: compose/frontend.yml  (web)
+#
+#   scripts/init-env.sh        # once: creates .env with a random database password
+#   docker compose up -d --build
+#   open http://localhost:2283  # first visit creates the administrator account
+
+name: drivich
+
+include:
+  - path: compose/backend.yml
+    project_directory: .
+    env_file: .env
+  - path: compose/frontend.yml
+    project_directory: .
+    env_file: .env
