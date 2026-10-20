@@ -7,7 +7,9 @@
 # Build context: the web/ directory.
 #   docker build -f web/Dockerfile -t drivich-web web
 
-FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS build
+# The static files do not depend on the CPU, so they are always built on the build
+# machine's own platform (no emulation, which crashes Node under QEMU).
+FROM --platform=$BUILDPLATFORM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS build
 WORKDIR /app
 COPY package.json package-lock.json .npmrc ./
 RUN npm ci
