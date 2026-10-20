@@ -8,6 +8,7 @@ pub mod avatars;
 pub mod comments;
 pub mod files;
 pub mod nodes;
+pub mod office;
 pub mod shares;
 pub mod uploads;
 pub mod versions;
@@ -30,6 +31,7 @@ pub fn router(state: AppState) -> Router {
         .merge(files::routes())
         .merge(uploads::routes())
         .merge(archive::routes())
+        .merge(office::routes())
         .merge(versions::routes())
         .merge(comments::routes())
         .merge(shares::routes())

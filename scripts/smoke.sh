@@ -29,7 +29,7 @@ json() { jq -er "$1"; }
 
 # --- health, setup/login ------------------------------------------------------
 curl -sf "$BASE/health" | json '.status' >/dev/null && ok "health"
-setup_required="$(curl -sf "$BASE/auth/status" | json '.setup_required')"
+setup_required="$(curl -sf "$BASE/auth/status" | jq -r '.setup_required')"  # jq -e fails on false
 EMAIL_A="alice-$RUN@example.test"; EMAIL_B="bob-$RUN@example.test"
 ADM=(-H 'X-Drivich-CSRF: 1' -b "$TMP/adm.jar" -c "$TMP/adm.jar")
 if [[ "$setup_required" == "true" ]]; then

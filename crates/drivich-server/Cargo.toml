@@ -15,12 +15,14 @@ path = "src/main.rs"
 anyhow = "1.0.104"
 axum = { version = "0.8.9", features = ["multipart", "macros"] }
 axum-extra = { version = "0.12.6", features = ["cookie"] }
+base64 = "0.23.1"
 bytes = "1.12.1"
 chrono = { version = "0.4.45", features = ["serde"] }
 drivich-core = { version = "0.1.0", path = "../drivich-core" }
 futures-util = "0.3.34"
 hex = "0.4.3"
 mime_guess = "2.0.5"
+reqwest = { version = "0.12", default-features = false, features = ["stream"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 sha2 = "0.11.0"
@@ -34,5 +36,6 @@ tower-http = { version = "0.7.1", features = ["trace", "cors", "compression-gzip
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"] }
 utoipa = { version = "5.5.0", features = ["chrono", "uuid"] }
+url = "2.5.8"
 uuid = { version = "1.26.1", features = ["v4", "serde"] }
 zip = { version = "9", default-features = false, features = ["deflate", "chrono"] }

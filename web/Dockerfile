@@ -20,6 +20,7 @@ FROM nginxinc/nginx-unprivileged:stable-alpine@sha256:f5116ed4606f3eb015dd4a8e28
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/build /usr/share/nginx/html
 ENV DRIVICH_SERVER_URL=http://server:2283
+ENV DRIVICH_OFFICE_URL=http://onlyoffice:80
 EXPOSE 8080
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
     CMD wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1

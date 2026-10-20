@@ -66,7 +66,9 @@ pub fn client_ip(headers: &HeaderMap, trust_proxy: bool) -> String {
 /// preflight, which this server never grants.
 pub async fn require_csrf_header(req: Request, next: Next) -> Response {
     let safe = matches!(*req.method(), Method::GET | Method::HEAD | Method::OPTIONS);
-    if !safe && !req.headers().contains_key("x-drivich-csrf") {
+    // The Document Server calls back without cookies; it authenticates with a signed token.
+    let callback = req.uri().path().contains("/office/callback/");
+    if !safe && !callback && !req.headers().contains_key("x-drivich-csrf") {
         let body = serde_json::json!({ "error": { "code": "csrf", "message": "Missing X-Drivich-CSRF header" } });
         return (StatusCode::FORBIDDEN, axum::Json(body)).into_response();
     }

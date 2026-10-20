@@ -30,8 +30,11 @@
 		menu = { x: r.left, y: r.bottom + 4 };
 	}
 
+	// Without a quota, show the whole disk (Drivich or not), like the storage page.
+	const diskUsed = $derived(session.disk ? Math.max(0, session.disk.total_bytes - session.disk.free_bytes) : null);
+	const usedShown = $derived(session.quota === null && diskUsed !== null ? diskUsed : session.used);
 	const total = $derived(session.quota ?? session.disk?.total_bytes ?? null);
-	const limitLabel = $derived(session.quota ? formatBytes(session.quota) : session.disk ? t('sidebar.disk_total', { size: formatBytes(session.disk.total_bytes) }) : '');
+	const limitLabel = $derived(total ? formatBytes(total) : '');
 </script>
 
 {#if ui.drawer}<button class="scrim" aria-label={t('sidebar.fermer_le_menu')} onclick={() => (ui.drawer = false)}></button>{/if}
@@ -65,10 +68,10 @@
 	</ul>
 
 	<div class="storage">
-		<div class="bar" role="progressbar" aria-label={t('sidebar.espace_de_stockage_utilise')} aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(pct(session.used, total))}>
-			<div style="width:{Math.max(pct(session.used, total), session.used > 0 ? 1 : 0)}%"></div>
+		<div class="bar" role="progressbar" aria-label={t('sidebar.espace_de_stockage_utilise')} aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(pct(usedShown, total))}>
+			<div style="width:{Math.max(pct(usedShown, total), usedShown > 0 ? 1 : 0)}%"></div>
 		</div>
-		<p>{limitLabel ? t('sidebar.used_of', { used: formatBytes(session.used), total: limitLabel }) : t('sidebar.used', { used: formatBytes(session.used) })}</p>
+		<p>{limitLabel ? t('sidebar.used_of', { used: formatBytes(usedShown), total: limitLabel }) : t('sidebar.used', { used: formatBytes(usedShown) })}</p>
 		<a class="btn outlined manage" href="/settings/storage">{t('sidebar.gerer_le_stockage')}</a>
 	</div>
 </nav>

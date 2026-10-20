@@ -269,7 +269,7 @@ pub fn parse_range(value: &str, len: u64) -> Result<Option<(u64, u64)>, ()> {
     Ok(Some((start, end)))
 }
 
-async fn stream_path(
+pub(crate) async fn stream_path(
     path: PathBuf,
     ctype: String,
     etag: String,

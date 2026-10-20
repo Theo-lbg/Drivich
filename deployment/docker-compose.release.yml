@@ -47,6 +47,7 @@ services:
       DRIVICH_MAX_VERSIONS: ${DRIVICH_MAX_VERSIONS:-20}
       DRIVICH_MAX_ZIP_STREAMS: ${DRIVICH_MAX_ZIP_STREAMS:-4}
       DRIVICH_UPLOAD_TTL_HOURS: ${DRIVICH_UPLOAD_TTL_HOURS:-48}
+      DRIVICH_ONLYOFFICE_JWT_SECRET: ${DRIVICH_ONLYOFFICE_JWT_SECRET:-}
       RUST_LOG: ${RUST_LOG:-info}
     user: "${DRIVICH_UID:-10001}:${DRIVICH_GID:-10001}"
     volumes:
@@ -71,11 +72,28 @@ services:
     mem_limit: ${DRIVICH_WORKER_MEM:-1536m}
     networks: [backend]
 
+  # Optional: edit Word / Excel / PowerPoint in the browser. Enabled with
+  # COMPOSE_PROFILES=office in .env (needs about 2-3 GB of RAM).
+  onlyoffice:
+    image: onlyoffice/documentserver:9.3.0.1
+    profiles: [office]
+    restart: unless-stopped
+    environment:
+      JWT_ENABLED: "true"
+      JWT_SECRET: ${DRIVICH_ONLYOFFICE_JWT_SECRET:-}   # set in .env (scripts/init-env.sh generates it)
+      # Drivich is on a private Docker network: allow the Document Server to call it.
+      ALLOW_PRIVATE_IP_ADDRESS: "true"
+      ALLOW_META_IP_ADDRESS: "true"
+      TZ: ${TZ:-Etc/UTC}
+    mem_limit: ${DRIVICH_OFFICE_MEM:-3g}
+    networks: [frontend]
+
   web:
     image: ghcr.io/theo-lbg/drivich-web:${DRIVICH_VERSION:-release}
     restart: unless-stopped
     environment:
       DRIVICH_SERVER_URL: http://server:2283
+      DRIVICH_OFFICE_URL: http://onlyoffice:80
       TZ: ${TZ:-Etc/UTC}
     ports:
       - "${DRIVICH_BIND_ADDRESS:-0.0.0.0}:${DRIVICH_PORT:-2283}:8080"

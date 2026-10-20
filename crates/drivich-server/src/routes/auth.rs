@@ -152,6 +152,7 @@ async fn me(State(st): State<AppState>, AuthUser(u): AuthUser) -> ApiResult<Json
         "used_bytes": used,
         "quota_bytes": quota,
         "disk": disk,
+        "office": st.cfg.office_jwt_secret.is_some(),
         "immich_url": immich,
         "immich_default_url": immich_default,
     })))

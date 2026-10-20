@@ -169,6 +169,7 @@ export const api = {
 	versions: (id: string) => get<{ items: VersionItem[]; max_versions: number }>(`/nodes/${id}/versions`),
 	restoreVersion: (id: string, version: string) => post<{ node: NodeItem }>(`/nodes/${id}/versions/${version}/restore`),
 	deleteVersion: (id: string, version: string) => del<{ ok: boolean }>(`/nodes/${id}/versions/${version}`),
+	officeConfig: (id: string) => get<{ server: string; config: unknown }>(`/nodes/${id}/office`),
 	requestPreview: (id: string) => post<{ state: 'none' | 'pending' | 'ready' | 'failed' | 'unsupported' }>(`/nodes/${id}/preview`),
 	createVersionUpload: (node_id: string, size: number) =>
 		post<{ upload: { id: string; received: number; total_size: number } }>('/uploads', { replace_node_id: node_id, size }),

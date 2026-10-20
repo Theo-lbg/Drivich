@@ -8,6 +8,10 @@ declare global {
 		// interface PageState {}
 		// interface Platform {}
 	}
+	interface Window {
+		/** ONLYOFFICE editor API, loaded from the Document Server on demand. */
+		DocsAPI?: { DocEditor: new (id: string, config: unknown) => { destroyEditor?: () => void } };
+	}
 }
 
 export {};
