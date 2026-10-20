@@ -139,3 +139,24 @@ export interface Filters {
 	owner: string;
 	location: string;
 }
+
+export interface CommentItem {
+	id: string;
+	node_id: string;
+	author_id: string;
+	author_name: string;
+	author_avatar_version: number;
+	body: string;
+	created_at: string;
+	edited_at: string | null;
+	can_edit: boolean;
+	can_delete: boolean;
+}
+
+export interface VersionItem {
+	id: string;
+	size: number;
+	mime: string;
+	saved_at: string;
+	replaced_at: string;
+}

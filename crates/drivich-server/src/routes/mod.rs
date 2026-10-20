@@ -2,12 +2,15 @@
 // Copyright (c) 2026 Theo-lbg
 
 pub mod admin;
+pub mod archive;
 pub mod auth;
 pub mod avatars;
+pub mod comments;
 pub mod files;
 pub mod nodes;
 pub mod shares;
 pub mod uploads;
+pub mod versions;
 
 use crate::extract::{require_csrf_header, security_headers};
 use crate::state::AppState;
@@ -26,6 +29,9 @@ pub fn router(state: AppState) -> Router {
         .merge(nodes::routes())
         .merge(files::routes())
         .merge(uploads::routes())
+        .merge(archive::routes())
+        .merge(versions::routes())
+        .merge(comments::routes())
         .merge(shares::routes())
         .merge(admin::routes())
         .layer(middleware::from_fn(require_csrf_header));

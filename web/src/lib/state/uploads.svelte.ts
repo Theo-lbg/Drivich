@@ -24,6 +24,8 @@ export interface UploadJob {
 	parentId: string | null;
 	file: File;
 	uploadId?: string;
+	/** Upload as a new version of this file instead of a new file. */
+	replaceNodeId?: string;
 	controller?: AbortController;
 }
 
@@ -49,6 +51,13 @@ export function enqueue(items: { file: File; parentId: string | null }[]) {
 	for (const { file, parentId } of items) {
 		uploads.jobs.push({ id: ++seq, name: file.name, size: file.size, sent: 0, status: 'queued', parentId, file });
 	}
+	uploads.collapsed = false;
+	pump();
+}
+
+/** Upload `file` as a new version of an existing file. */
+export function enqueueVersion(file: File, node: { id: string; name: string }) {
+	uploads.jobs.push({ id: ++seq, name: node.name, size: file.size, sent: 0, status: 'queued', parentId: null, file, replaceNodeId: node.id });
 	uploads.collapsed = false;
 	pump();
 }
@@ -148,7 +157,7 @@ async function run(job: UploadJob) {
 	job.controller = new AbortController();
 	try {
 		if (!job.uploadId) {
-			const { upload } = await api.createUpload(job.parentId, job.name, job.size);
+			const { upload } = job.replaceNodeId ? await api.createVersionUpload(job.replaceNodeId, job.size) : await api.createUpload(job.parentId, job.name, job.size);
 			job.uploadId = upload.id;
 		}
 		let offset = job.sent > 0 ? await api.uploadOffset(job.uploadId) : 0;

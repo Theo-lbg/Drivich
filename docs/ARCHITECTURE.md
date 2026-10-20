@@ -39,7 +39,9 @@ navigateur ──► web (nginx : fichiers statiques SvelteKit + proxy /api, str
 
 ## Limites connues et pistes
 
-- Téléchargement d'un dossier (zip en flux), aperçus Office, extraction du texte des PDF, commentaires (le rôle existe, la fonction non), versions, application mobile.
+- Application mobile native (Flutter) : l'interface web est responsive et installable (PWA) en attendant. Extraction du texte des PDF et des documents Office pour la recherche. Édition de documents.
+- Commentaires : pas de fils de réponses, de mentions ni de notifications ; lisibles par tout lecteur de l'élément.
+- Versions : pas de nom ni d'auteur par version (seulement la date) ; l'aperçu Office n'est pas proposé via les liens publics.
 - L'étiquette de rôle des résultats de recherche pour les éléments partagés est prudente (`viewer`) ; les actions sont de toute façon revérifiées côté serveur.
 - Les favoris sont personnels au propriétaire ; « Récents » ne couvre que ses propres fichiers.
 - Le déplacement n'est proposé que pour ses propres éléments.
@@ -100,3 +102,13 @@ Drivich **n'est pas une copie** de l'architecture d'Immich : il en reprend les p
 
 Fait : `npm audit` (0), RustSec via `cargo audit` (aucune vulnérabilité compilée : `rsa` n'est que dans `Cargo.lock` via sqlx-mysql, non utilisé ; `paste` est un macro de build non maintenu), Trivy sur les images (0 HIGH/CRITICAL corrigeable après mise à jour de la base nginx et `apt-get upgrade`), et confrontation avec des failles publiées d'Immich (OAuth `state`, mot de passe en URL, élévation de clé d'API, XSS via métadonnées, accès hors périmètre via lien partagé) : Drivich n'a ni OAuth ni clés d'API ; les noms sont échappés par Svelte ; les liens publics sont limités au sous-arbre et refusent révoqué/expiré/corbeille ; les jetons de lien ne sont plus écrits dans les journaux.
 Pas fait : audit indépendant, test d'intrusion, fuzzing. À refaire à chaque mise à jour (`dependabot` + CI).
+
+### Zip, versions, commentaires, aperçu Office : choix de conception et de sécurité
+
+- **Zip** : `drivich_core::archive` liste l'arbre (récursion SQL bornée à 64 niveaux et 50 000 entrées, éléments à la corbeille exclus) après autorisation de chaque racine ; les noms sont assainis (`/`, `\`, contrôles → `_`) et dédoublonnés sans tenir compte de la casse. Un fil bloquant écrit l'archive (deflate niveau 1, zip64 au-delà de 4 Gio) dans un canal borné : mémoire constante et contre-pression si le client est lent ; si le client part, l'écriture s'arrête. Nombre d'archives simultanées limité par un sémaphore.
+- **Versions** : le nœud pointe toujours sur le blob courant ; remplacer un fichier archive l'ancien blob dans `node_versions` (transaction, verrou de ligne). Les blobs ne sont supprimés que s'il n'est référencé ni par un nœud ni par une version ; la suppression définitive, le vidage de la corbeille, la purge et le ramasse-miettes en tiennent compte (testé). Le quota compte les versions.
+- **Commentaires** : texte brut (échappé par Svelte, jamais interprété), 4 000 caractères, 1 000 par élément ; accès décidé par `perms::authorize`, donc un tiers reçoit 404.
+- **Aperçu Office** : LibreOffice tourne **uniquement dans le worker** (utilisateur non root, réseau `internal` dans les compose fournis, mémoire limitée, un document à la fois, 180 s maximum, entrée ≤ 100 Mio, sortie ≤ 300 Mio, résultat vérifié `%PDF-`). L'extension du fichier d'entrée vient du type MIME, jamais du nom fourni. Un échec est définitif pour ce contenu (pas de nouvelle tentative automatique). Les formats Office restent un format d'analyse risqué : ne branchez pas le worker sur un réseau sortant et gardez `WITH_OFFICE=false` si vous n'en avez pas besoin.
+- **PWA** : le service worker ne met en cache que la sortie de build ; `/api/` n'est jamais intercepté.
+
+Contrôle du 2026-10-20 (après ces fonctions) : `npm audit` 0 ; RustSec : `zip` 7.4 avait des avis (extraction, non utilisée ici) → passé en 9.x ; reste `rsa` (présent uniquement dans `Cargo.lock` via sqlx-mysql, non compilé) et `paste` (macro de build non maintenue) ; Trivy sur les trois images : 0 HIGH/CRITICAL corrigeable ; test réel d'un .docx converti en PDF dans le worker, d'un dossier de 600 Mo en .zip (≈ 32 Mio de RAM côté serveur), et smoke test 99/99.

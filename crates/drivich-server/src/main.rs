@@ -50,8 +50,10 @@ async fn main() -> anyhow::Result<()> {
         limits: Limits {
             max_file_bytes: cfg.max_file_bytes,
             ttl_hours: cfg.upload_ttl_hours,
+            max_versions: cfg.max_versions,
         },
         limiter: Arc::new(Limiter::new(8, Duration::from_secs(600))),
+        zip_slots: Arc::new(tokio::sync::Semaphore::new(cfg.max_zip_streams)),
         cfg: Arc::new(cfg.clone()),
     };
 

@@ -24,6 +24,10 @@ pub struct Config {
     /// Daily database dumps (`pg_dump`, worker image) and how many to keep.
     pub backups_enabled: bool,
     pub backup_keep: usize,
+    /// Older versions kept for each file.
+    pub max_versions: i64,
+    /// Simultaneous .zip downloads the API serves.
+    pub max_zip_streams: usize,
     /// Trust `X-Forwarded-For` / `X-Real-IP` (only when behind your own reverse proxy).
     pub trust_proxy: bool,
     /// Skip the startup volume check (see `Storage::verify_mounts`). Dangerous.
@@ -62,6 +66,8 @@ impl Config {
             trash_days: env_parse("DRIVICH_TRASH_DAYS", 30i64),
             backups_enabled: env_parse("DRIVICH_BACKUPS_ENABLED", true),
             backup_keep: env_parse("DRIVICH_BACKUP_KEEP", 14usize).max(1),
+            max_versions: env_parse("DRIVICH_MAX_VERSIONS", 20i64).clamp(1, 500),
+            max_zip_streams: env_parse("DRIVICH_MAX_ZIP_STREAMS", 4usize).clamp(1, 64),
             trust_proxy: env_parse("DRIVICH_TRUST_PROXY", false),
             ignore_mount_check: env_parse("DRIVICH_IGNORE_MOUNT_CHECK_ERRORS", false),
         })

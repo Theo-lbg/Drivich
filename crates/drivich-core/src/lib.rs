@@ -7,15 +7,18 @@
 //! are thin binaries on top of this crate. File bytes live on disk
 //! (see [`storage`]), everything else lives in PostgreSQL.
 
+pub mod archive;
 pub mod auth;
 pub mod avatars;
 pub mod backups;
+pub mod comments;
 pub mod config;
 pub mod db;
 pub mod error;
 pub mod jobs;
 pub mod models;
 pub mod nodes;
+pub mod office;
 pub mod perms;
 pub mod search;
 pub mod settings;
@@ -24,6 +27,7 @@ pub mod storage;
 pub mod thumbs;
 pub mod uploads;
 pub mod users;
+pub mod versions;
 
 pub use error::{CoreError, Result};
 

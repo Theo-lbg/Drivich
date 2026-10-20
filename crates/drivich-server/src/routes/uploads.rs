@@ -3,7 +3,8 @@
 
 //! Resumable upload protocol (a small tus-like design).
 //!
-//! * `POST   /uploads`        `{parent_id, name, size}` -> session
+//! * `POST   /uploads`        `{parent_id, name, size}` -> session, or
+//!   `{replace_node_id, size}` to upload a new version of an existing file
 //! * `HEAD   /uploads/{id}`   `Upload-Offset` header = bytes already stored
 //! * `PATCH  /uploads/{id}`   header `Upload-Offset: N`, body = raw bytes
 //! * `DELETE /uploads/{id}`   cancel
@@ -41,7 +42,10 @@ pub fn routes() -> Router<AppState> {
 #[derive(Deserialize)]
 struct NewUpload {
     parent_id: Option<Uuid>,
-    name: String,
+    /// Required unless `replace_node_id` is set.
+    name: Option<String>,
+    /// Upload a new version of this file instead of a new file.
+    replace_node_id: Option<Uuid>,
     size: i64,
 }
 
@@ -50,16 +54,24 @@ async fn create(
     AuthUser(u): AuthUser,
     Json(b): Json<NewUpload>,
 ) -> ApiResult<Json<Value>> {
-    let info = uploads::create(
-        &st.pool,
-        &st.storage,
-        &st.limits,
-        u.id,
-        b.parent_id,
-        &b.name,
-        b.size,
-    )
-    .await?;
+    let info = match (b.replace_node_id, b.name) {
+        (Some(node), _) => {
+            uploads::create_version(&st.pool, &st.storage, &st.limits, u.id, node, b.size).await?
+        }
+        (None, Some(name)) => {
+            uploads::create(
+                &st.pool,
+                &st.storage,
+                &st.limits,
+                u.id,
+                b.parent_id,
+                &name,
+                b.size,
+            )
+            .await?
+        }
+        (None, None) => return Err(CoreError::bad("name is required").into()),
+    };
     Ok(Json(json!({ "upload": info })))
 }
 

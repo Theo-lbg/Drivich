@@ -28,6 +28,7 @@ pub fn routes() -> Router<AppState> {
         .route("/nodes/{id}/content", get(content))
         .route("/nodes/{id}/thumbnail", get(thumbnail))
         .route("/nodes/{id}/open", post(open))
+        .route("/nodes/{id}/preview", get(preview).post(request_preview))
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -72,6 +73,40 @@ async fn thumbnail(
 ) -> ApiResult<Response> {
     let n = file_of(&st, u.id, id).await?;
     serve_thumbnail(&st, &n, &headers).await
+}
+
+/// Ask for the PDF rendition of an Office document (starts the conversion once).
+async fn request_preview(
+    State(st): State<AppState>,
+    AuthUser(u): AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<axum::Json<serde_json::Value>> {
+    let state = drivich_core::office::request(&st.pool, u.id, id).await?;
+    Ok(axum::Json(serde_json::json!({ "state": state })))
+}
+
+/// The PDF rendition, once the worker has produced it.
+async fn preview(
+    State(st): State<AppState>,
+    AuthUser(u): AuthUser,
+    Path(id): Path<Uuid>,
+    headers: HeaderMap,
+) -> ApiResult<Response> {
+    let n = file_of(&st, u.id, id).await?;
+    let blob = n.blob_id.ok_or(CoreError::NotFound)?;
+    if drivich_core::office::state_of(&st.pool, blob).await? != "ready" {
+        return Err(CoreError::NotFound.into());
+    }
+    let name = format!("{}.pdf", n.name);
+    stream_path(
+        st.storage.preview_path(blob),
+        "application/pdf".into(),
+        format!("\"p-{}\"", blob.simple()),
+        &headers,
+        Some(content_disposition("inline", &name)),
+        "private, no-cache",
+    )
+    .await
 }
 
 async fn open(

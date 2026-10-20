@@ -8,23 +8,52 @@ import { refreshStorage } from './state/session.svelte';
 import { t } from './i18n/index.svelte';
 import { errorToast, toast } from './state/toast.svelte';
 import { isPreviewable } from './format';
+import { enqueueVersion } from './state/uploads.svelte';
 import type { NodeItem } from './types';
 
 export function folderHref(id: string): string {
 	return `/drive/folders/${id}`;
 }
 
-export function downloadNode(n: NodeItem) {
-	if (n.kind === 'folder') {
-		toast(t('toast.folder_download_unavailable'));
-		return;
-	}
+function clickLink(href: string, name?: string) {
 	const a = document.createElement('a');
-	a.href = urls.download(n.id);
-	a.download = n.name;
+	a.href = href;
+	if (name) a.download = name;
 	document.body.appendChild(a);
 	a.click();
 	a.remove();
+}
+
+/** A file downloads as is; a folder streams as a .zip. */
+export function downloadNode(n: NodeItem) {
+	if (n.kind === 'folder') {
+		toast(t('toast.zip_started'));
+		clickLink(urls.zip(n.id));
+		return;
+	}
+	clickLink(urls.download(n.id), n.name);
+}
+
+/** Download a selection: one file as is, anything else as one .zip. */
+export function downloadMany(items: NodeItem[]) {
+	if (items.length === 1) return downloadNode(items[0]);
+	if (!items.length) return;
+	toast(t('toast.zip_started'));
+	clickLink(urls.zipSelection(items.map((i) => i.id)));
+}
+
+/** Pick a file and upload it as a new version of `n`. */
+export function askNewVersion(n: NodeItem) {
+	const input = document.createElement('input');
+	input.type = 'file';
+	input.onchange = () => {
+		const f = input.files?.[0];
+		if (f) {
+			enqueueVersion(f, n);
+			toast(t('versions.uploading'));
+		}
+	};
+	input.click();
 }
 
 export function openNode(n: NodeItem, siblings: NodeItem[]) {

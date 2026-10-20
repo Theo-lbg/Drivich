@@ -17,7 +17,7 @@
 use crate::db::Pool;
 use crate::error::{CoreError, Result};
 use crate::jobs;
-use crate::models::Node;
+use crate::models::{Node, Role};
 use crate::nodes::{self, clean_name};
 use crate::perms;
 use crate::settings;
@@ -36,6 +36,8 @@ const MAX_PENDING_PER_USER: i64 = 200;
 pub struct Limits {
     pub max_file_bytes: u64,
     pub ttl_hours: i64,
+    /// Older versions kept per file.
+    pub max_versions: i64,
 }
 
 #[derive(Debug, Clone, FromRow, Serialize, utoipa::ToSchema)]
@@ -79,15 +81,64 @@ pub async fn create(
     total_size: i64,
 ) -> Result<UploadInfo> {
     let name = clean_name(name)?;
+    check_size(limits, total_size)?;
+    let tree_owner = perms::authorize_parent(pool, user, parent).await?;
+    check_quota(pool, tree_owner, total_size).await?;
+    open_session(pool, storage, limits, user, parent, None, &name, total_size).await
+}
+
+/// Start an upload that will become a new version of an existing file.
+pub async fn create_version(
+    pool: &Pool,
+    storage: &Storage,
+    limits: &Limits,
+    user: Uuid,
+    node: Uuid,
+    total_size: i64,
+) -> Result<UploadInfo> {
+    check_size(limits, total_size)?;
+    let (n, _) = perms::authorize(pool, user, node, Role::Editor).await?;
+    if n.kind != "file" || n.trashed_at.is_some() {
+        return Err(CoreError::bad(
+            "only a file outside the trash can get a new version",
+        ));
+    }
+    // The previous content is kept as a version, so the whole new size counts.
+    check_quota(pool, n.owner_id, total_size).await?;
+    open_session(
+        pool,
+        storage,
+        limits,
+        user,
+        n.parent_id,
+        Some(n.id),
+        &n.name,
+        total_size,
+    )
+    .await
+}
+
+fn check_size(limits: &Limits, total_size: i64) -> Result<()> {
     if total_size < 0 {
         return Err(CoreError::bad("invalid size"));
     }
     if limits.max_file_bytes > 0 && total_size as u64 > limits.max_file_bytes {
         return Err(CoreError::TooLarge);
     }
-    let tree_owner = perms::authorize_parent(pool, user, parent).await?;
-    check_quota(pool, tree_owner, total_size).await?;
+    Ok(())
+}
 
+#[allow(clippy::too_many_arguments)]
+async fn open_session(
+    pool: &Pool,
+    storage: &Storage,
+    limits: &Limits,
+    user: Uuid,
+    parent: Option<Uuid>,
+    replace: Option<Uuid>,
+    name: &str,
+    total_size: i64,
+) -> Result<UploadInfo> {
     let pending: i64 =
         sqlx::query_scalar("SELECT count(*) FROM upload_sessions WHERE owner_id = $1")
             .bind(user)
@@ -98,19 +149,20 @@ pub async fn create(
     }
 
     let id = Uuid::new_v4();
-    let mime = detect_mime(&name, &[]);
+    let mime = detect_mime(name, &[]);
     let sql = format!(
-        "INSERT INTO upload_sessions (id, owner_id, parent_id, name, mime, total_size, expires_at) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING {INFO_COLS}"
+        "INSERT INTO upload_sessions (id, owner_id, parent_id, name, mime, total_size, expires_at, replace_node_id) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING {INFO_COLS}"
     );
     let info: UploadInfo = sqlx::query_as(&sql)
         .bind(id)
         .bind(user)
         .bind(parent)
-        .bind(&name)
+        .bind(name)
         .bind(mime)
         .bind(total_size)
         .bind(Utc::now() + Duration::hours(limits.ttl_hours))
+        .bind(replace)
         .fetch_one(pool)
         .await?;
     tokio::fs::File::create(storage.upload_path(id)).await?;
@@ -122,7 +174,7 @@ async fn check_quota(pool: &Pool, tree_owner: Uuid, incoming: i64) -> Result<()>
         let used = crate::users::used_bytes(pool, tree_owner).await?;
         let pending: i64 = sqlx::query_scalar(
             "SELECT COALESCE(sum(total_size), 0)::bigint FROM upload_sessions u \
-             WHERE COALESCE((SELECT owner_id FROM nodes WHERE id = u.parent_id), u.owner_id) = $1",
+             WHERE COALESCE((SELECT owner_id FROM nodes WHERE id = u.replace_node_id), (SELECT owner_id FROM nodes WHERE id = u.parent_id), u.owner_id) = $1",
         )
         .bind(tree_owner)
         .fetch_one(pool)
@@ -139,6 +191,7 @@ struct Session {
     id: Uuid,
     owner_id: Uuid,
     parent_id: Option<Uuid>,
+    replace_node_id: Option<Uuid>,
     name: String,
     total_size: i64,
     expires_at: DateTime<Utc>,
@@ -146,7 +199,7 @@ struct Session {
 
 async fn load(pool: &Pool, user: Uuid, id: Uuid) -> Result<Session> {
     let s: Session = sqlx::query_as(
-        "SELECT id, owner_id, parent_id, name, total_size, expires_at FROM upload_sessions WHERE id = $1 AND owner_id = $2",
+        "SELECT id, owner_id, parent_id, replace_node_id, name, total_size, expires_at FROM upload_sessions WHERE id = $1 AND owner_id = $2",
     )
     .bind(id)
     .bind(user)
@@ -242,7 +295,7 @@ where
         expires_at: s.expires_at,
     };
     if received == total {
-        let node = finalize(pool, storage, &s).await?;
+        let node = finalize(pool, storage, limits, &s).await?;
         return Ok(AppendOutcome {
             upload: info,
             node: Some(node),
@@ -255,15 +308,24 @@ where
 }
 
 /// Finalise an empty file (no chunk will ever be sent for it).
-pub async fn finish_empty(pool: &Pool, storage: &Storage, user: Uuid, id: Uuid) -> Result<Node> {
+pub async fn finish_empty(
+    pool: &Pool,
+    storage: &Storage,
+    limits: &Limits,
+    user: Uuid,
+    id: Uuid,
+) -> Result<Node> {
     let s = load(pool, user, id).await?;
     if s.total_size != 0 || part_len(storage, id).await? != 0 {
         return Err(CoreError::bad("upload is not empty"));
     }
-    finalize(pool, storage, &s).await
+    finalize(pool, storage, limits, &s).await
 }
 
-async fn finalize(pool: &Pool, storage: &Storage, s: &Session) -> Result<Node> {
+async fn finalize(pool: &Pool, storage: &Storage, limits: &Limits, s: &Session) -> Result<Node> {
+    if let Some(node) = s.replace_node_id {
+        return finalize_version(pool, storage, limits, s, node).await;
+    }
     // Rights may have changed during a long upload: check again.
     let tree_owner = perms::authorize_parent(pool, s.owner_id, s.parent_id).await?;
 
@@ -318,6 +380,84 @@ async fn finalize(pool: &Pool, storage: &Storage, s: &Session) -> Result<Node> {
         jobs::enqueue_blob(pool, jobs::kind::INDEX_TEXT, blob).await?;
     }
     nodes::get(pool, s.owner_id, node_id).await
+}
+
+/// The upload replaces the content of `node`: the old blob becomes a version.
+async fn finalize_version(
+    pool: &Pool,
+    storage: &Storage,
+    limits: &Limits,
+    s: &Session,
+    node: Uuid,
+) -> Result<Node> {
+    // Rights may have changed during a long upload: check again.
+    let (n, _) = perms::authorize(pool, s.owner_id, node, Role::Editor).await?;
+    if n.kind != "file" || n.trashed_at.is_some() {
+        return Err(CoreError::bad("the file is no longer available"));
+    }
+    let mut head = vec![0u8; 512];
+    let mut f = tokio::fs::File::open(storage.upload_path(s.id)).await?;
+    let read = f.read(&mut head).await?;
+    head.truncate(read);
+    drop(f);
+    let mime = detect_mime(&n.name, &head);
+    let blob = Uuid::new_v4();
+    let thumb_state = if thumbnailable(&mime) {
+        "pending"
+    } else {
+        "unsupported"
+    };
+
+    let mut tx = pool.begin().await?;
+    // Serialise concurrent replacements of the same file.
+    let cur: (Uuid, i64, Option<String>) =
+        sqlx::query_as("SELECT blob_id, size, mime FROM nodes WHERE id = $1 FOR UPDATE")
+            .bind(node)
+            .fetch_one(&mut *tx)
+            .await?;
+    sqlx::query("INSERT INTO blobs (id, size, mime, thumb_state) VALUES ($1, $2, $3, $4)")
+        .bind(blob)
+        .bind(s.total_size)
+        .bind(&mime)
+        .bind(thumb_state)
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query("INSERT INTO node_versions (node_id, blob_id, size, mime) VALUES ($1, $2, $3, $4)")
+        .bind(node)
+        .bind(cur.0)
+        .bind(cur.1)
+        .bind(cur.2.unwrap_or_else(|| "application/octet-stream".into()))
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query(
+        "UPDATE nodes SET blob_id = $2, size = $3, mime = $4, updated_at = now() WHERE id = $1",
+    )
+    .bind(node)
+    .bind(blob)
+    .bind(s.total_size)
+    .bind(&mime)
+    .execute(&mut *tx)
+    .await?;
+    let dropped = crate::versions::prune_tx(&mut tx, node, limits.max_versions).await?;
+    sqlx::query("DELETE FROM upload_sessions WHERE id = $1")
+        .bind(s.id)
+        .execute(&mut *tx)
+        .await?;
+    storage.commit_upload(s.id, blob).await?;
+    if let Err(e) = tx.commit().await {
+        storage.remove_blob(blob).await;
+        return Err(e.into());
+    }
+    nodes::free_orphans(pool, storage, &dropped).await?;
+
+    jobs::enqueue_blob(pool, jobs::kind::CHECKSUM, blob).await?;
+    if thumbnailable(&mime) {
+        jobs::enqueue_blob(pool, jobs::kind::THUMBNAIL, blob).await?;
+    }
+    if is_text_like(&mime, &n.name) {
+        jobs::enqueue_blob(pool, jobs::kind::INDEX_TEXT, blob).await?;
+    }
+    nodes::get(pool, s.owner_id, node).await
 }
 
 pub async fn cancel(pool: &Pool, storage: &Storage, user: Uuid, id: Uuid) -> Result<()> {

@@ -17,12 +17,17 @@
 | **Visualisation** | liste et grille, tri, filtres (type, propriétaire, date), sélection multiple, menu contextuel, raccourcis clavier, chargement progressif (pagination par curseur), miniatures générées en arrière-plan (images, vidéos), visionneuse intégrée : images, vidéos, audio, PDF, texte et code |
 | **Récents** | regroupés par date (Aujourd’hui, Hier, Cette semaine…) avec les filtres Type, Contacts, Date de modification et Source ; incluent les fichiers partagés avec vous |
 | **Recherche** | suggestions pendant la frappe, page de résultats avec filtres, **recherche avancée**, recherche dans le **contenu** des fichiers texte |
+| **Dossiers en .zip** | un dossier ou une sélection se télécharge en **.zip généré à la volée** (flux : mémoire constante, testé sur 600 Mo à ~32 Mo de RAM), y compris depuis un lien public ; au plus `DRIVICH_MAX_ZIP_STREAMS` archives simultanées |
+| **Versions** | « Importer une nouvelle version » sur un fichier : l'ancien contenu est conservé (`DRIVICH_MAX_VERSIONS`, 20 par défaut, comptées dans le quota), consultable, téléchargeable, restaurable (rien n'est perdu : le contenu remplacé devient une version) ou supprimable |
+| **Commentaires** | sur les fichiers et dossiers, dans le panneau Détails et la visionneuse ; rôle commentateur ou plus pour écrire, l'auteur modifie, l'auteur ou le propriétaire supprime ; jamais exposés par les liens publics |
+| **Aperçu Office** | Word, Excel, PowerPoint, OpenDocument et RTF s'ouvrent dans la visionneuse : le worker les convertit en PDF avec LibreOffice à la première ouverture (un document à la fois, délai limité, sans accès réseau) ; `WITH_OFFICE=false` retire LibreOffice de l'image (~400 Mo de moins) |
+| **Mobile** | interface adaptée aux petits écrans et **installable** (manifeste + service worker qui ne met en cache que l'interface, jamais l'API ni vos fichiers) |
 | **Partage** | avec des utilisateurs (lecteur / commentateur / éditeur, hérité par les sous-dossiers), **liens publics** (expiration, révocation), « Partagés avec moi » |
 | **Langues** | interface en **français** (par défaut), English, Español et Deutsch ; choix par utilisateur dans Paramètres › Compte (ou « automatique » = langue du navigateur), aussi sur les pages de connexion ; ajouter une langue = un fichier JSON dans `web/src/lib/i18n/locales/` |
 | **Administration** | comptes, quotas, inscriptions, état du serveur, de la base et des tâches ; **pause et concurrence par type de tâche** ; **sauvegardes automatiques de la base** (dump quotidien, 14 conservés, téléchargeables) |
 | **Sécurité** | Argon2id, sessions révocables, CSRF, autorisations **uniquement côté serveur**, aucune synchronisation avec vos fichiers locaux |
 
-Limites connues (voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)) : pas encore de téléchargement de dossier en .zip, d'aperçu Office, de commentaires, de versions de fichiers ni d'application mobile ; l'API est décrite par un schéma **OpenAPI** généré ([docs/openapi.json](docs/openapi.json), servi aussi sur `/api/v1/openapi.json`) en plus de [docs/API.md](docs/API.md).
+Limites connues (voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)) : pas d'application mobile native (l'interface web est adaptée aux téléphones et **installable** comme application, PWA), pas d'édition de documents dans le navigateur, pas encore d'extraction du texte des PDF et des documents Office pour la recherche ; l'API est décrite par un schéma **OpenAPI** généré ([docs/openapi.json](docs/openapi.json), servi aussi sur `/api/v1/openapi.json`) en plus de [docs/API.md](docs/API.md).
 
 ## Prérequis
 

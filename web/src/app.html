@@ -3,7 +3,12 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<meta name="theme-color" content="#f8fafd" />
+		<meta name="theme-color" content="#f8fafd" media="(prefers-color-scheme: light)" />
+		<meta name="theme-color" content="#131314" media="(prefers-color-scheme: dark)" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-title" content="Drivich" />
+		<link rel="manifest" href="/manifest.webmanifest" />
 		<script>
 			// Apply the saved theme before first paint (no flash of the wrong theme).
 			try {

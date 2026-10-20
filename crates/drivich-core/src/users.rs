@@ -294,7 +294,8 @@ pub async fn admin_update(pool: &Pool, id: Uuid, acting: Uuid, upd: AdminUpdate)
 /// Bytes stored by a user (trash included: it still occupies disk).
 pub async fn used_bytes(pool: &Pool, user_id: Uuid) -> Result<i64> {
     Ok(sqlx::query_scalar(
-        "SELECT COALESCE(sum(size), 0)::bigint FROM nodes WHERE owner_id = $1 AND kind = 'file'",
+        "SELECT (COALESCE((SELECT sum(size) FROM nodes WHERE owner_id = $1 AND kind = 'file'), 0) \
+              + COALESCE((SELECT sum(v.size) FROM node_versions v JOIN nodes n ON n.id = v.node_id WHERE n.owner_id = $1), 0))::bigint",
     )
     .bind(user_id)
     .fetch_one(pool)

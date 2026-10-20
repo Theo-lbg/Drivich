@@ -27,6 +27,7 @@ pub mod kind {
     pub const CLEANUP_SESSIONS: &str = "cleanup_sessions";
     pub const GC_BLOBS: &str = "gc_blobs";
     pub const DB_DUMP: &str = "db_dump";
+    pub const OFFICE_PREVIEW: &str = "office_preview";
 }
 
 #[derive(Debug, Clone, FromRow)]
@@ -70,8 +71,9 @@ pub async fn enqueue_blob(pool: &Pool, kind: &str, blob: Uuid) -> Result<()> {
 }
 
 /// Every kind of job, for the admin controls.
-pub const ALL_KINDS: [&str; 8] = [
+pub const ALL_KINDS: [&str; 9] = [
     kind::THUMBNAIL,
+    kind::OFFICE_PREVIEW,
     kind::CHECKSUM,
     kind::INDEX_TEXT,
     kind::DB_DUMP,

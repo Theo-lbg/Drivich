@@ -42,6 +42,8 @@ services:
       DRIVICH_TRUST_PROXY: "true"
       DRIVICH_IGNORE_MOUNT_CHECK_ERRORS: ${DRIVICH_IGNORE_MOUNT_CHECK_ERRORS:-false}
       DRIVICH_TRASH_DAYS: ${DRIVICH_TRASH_DAYS:-30}
+      DRIVICH_MAX_VERSIONS: ${DRIVICH_MAX_VERSIONS:-20}
+      DRIVICH_MAX_ZIP_STREAMS: ${DRIVICH_MAX_ZIP_STREAMS:-4}
       DRIVICH_UPLOAD_TTL_HOURS: ${DRIVICH_UPLOAD_TTL_HOURS:-48}
       RUST_LOG: ${RUST_LOG:-info}
     user: "${DRIVICH_UID:-10001}:${DRIVICH_GID:-10001}"
@@ -64,7 +66,7 @@ services:
     user: "${DRIVICH_UID:-10001}:${DRIVICH_GID:-10001}"
     volumes:
       - ${UPLOAD_LOCATION:-./library}:/data
-    mem_limit: ${DRIVICH_WORKER_MEM:-1g}
+    mem_limit: ${DRIVICH_WORKER_MEM:-1536m}
     networks: [backend]
 
   web:
