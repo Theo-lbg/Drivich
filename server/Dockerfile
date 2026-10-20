@@ -8,8 +8,8 @@ FROM rust:1-slim-bookworm@sha256:a24e292b4af7bdee351a31d3a6379972a5652f0ea22a1b6
 WORKDIR /src
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/src/target \
+RUN --mount=type=cache,id=drivich-cargo-registry,sharing=locked,target=/usr/local/cargo/registry \
+    --mount=type=cache,id=drivich-server-target,target=/src/target \
     cargo build --release --locked -p drivich-server \
  && cp target/release/drivich-server /drivich-server
 
