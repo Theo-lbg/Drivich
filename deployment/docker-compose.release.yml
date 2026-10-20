@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (c) 2026 Theo-lbg
 #
-# Run Drivich from the published images, without building anything:
-#   curl -LO <release>/docker-compose.release.yml  &&  curl -L <release>/.env.example -o .env
-#   (set DB_PASSWORD in .env, run `mkdir library postgres`)
-#   docker compose -f docker-compose.release.yml up -d
+# Run Drivich from the published images, without building anything. A release
+# attaches this file as docker-compose.yml, pinned to its version, with
+# example.env and init-env.sh (see "Installation depuis une release" in the README):
+#   curl -LO <release>/docker-compose.yml -LO <release>/example.env -LO <release>/init-env.sh
+#   bash init-env.sh     # .env with a random password, your UID/GID, library/ and postgres/
+#   docker compose up -d
 name: drivich
 
 services:
