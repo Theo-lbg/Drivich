@@ -6,6 +6,8 @@
 	import { askShare, downloadNode } from '$lib/actions';
 	import { classify, CLASS_COLOR, CLASS_ICON, formatBytes, isOffice } from '$lib/format';
 	import { viewer } from '$lib/state/app.svelte';
+	import { session } from '$lib/state/session.svelte';
+	import OfficeEditor from './OfficeEditor.svelte';
 	import Comments from './Comments.svelte';
 	import Icon from './Icon.svelte';
 
@@ -20,6 +22,9 @@
 	/** State of the PDF rendition of an Office document (made by the server on first view). */
 	let officeState = $state<'pending' | 'ready' | 'failed' | 'unsupported'>('pending');
 	const office = $derived(!!node && !viewer.token && isOffice(node));
+	/** Opened in the ONLYOFFICE editor when the server has one, else shown as a PDF. */
+	let editorFailed = $state(false);
+	const editing = $derived(office && session.office && !editorFailed);
 	const officeCapable = $derived(!!node && isOffice(node));
 
 	const src = $derived(node ? (viewer.token ? urls.publicContent(viewer.token, node.id) : urls.content(node.id)) : '');
@@ -31,25 +36,8 @@
 		textError = false;
 		zoom = 1;
 		imgFailed = false;
+		editorFailed = false;
 		if (!n) return;
-		if (!viewer.token && isOffice(n)) {
-			officeState = 'pending';
-			let stop = false;
-			(async () => {
-				while (!stop) {
-					try {
-						const r = await api.requestPreview(n.id);
-						officeState = r.state === 'none' ? 'pending' : r.state;
-						if (r.state !== 'pending' && r.state !== 'none') return;
-					} catch {
-						officeState = 'failed';
-						return;
-					}
-					await new Promise((res) => setTimeout(res, 2000));
-				}
-			})();
-			return () => (stop = true);
-		}
 		if ((kind === 'text' || kind === 'code') && n.size <= 2 * 1024 * 1024) {
 			const ctl = new AbortController();
 			fetch(src, { credentials: 'same-origin', signal: ctl.signal })
@@ -58,6 +46,28 @@
 				.catch(() => (textError = true));
 			return () => ctl.abort();
 		}
+	});
+
+	// PDF rendition of an Office document, when it is not opened in the editor.
+	$effect(() => {
+		const n = node;
+		if (!n || viewer.token || !isOffice(n) || (session.office && !editorFailed)) return;
+		officeState = 'pending';
+		let stop = false;
+		(async () => {
+			while (!stop) {
+				try {
+					const r = await api.requestPreview(n.id);
+					officeState = r.state === 'none' ? 'pending' : r.state;
+					if (r.state !== 'pending' && r.state !== 'none') return;
+				} catch {
+					officeState = 'failed';
+					return;
+				}
+				await new Promise((res) => setTimeout(res, 2000));
+			}
+		})();
+		return () => (stop = true);
 	});
 
 	function close() {
@@ -127,6 +137,8 @@
 				{/key}
 			{:else if kind === 'pdf'}
 				{#key node.id}<iframe title={node.name} src={src}></iframe>{/key}
+			{:else if editing}
+				{#key node.id}<OfficeEditor {node} onfail={() => { editorFailed = true; }} />{/key}
 			{:else if office && officeState === 'ready'}
 				{#key node.id}<iframe title={node.name} src={urls.preview(node.id)}></iframe>{/key}
 			{:else if office && officeState === 'pending'}

@@ -20,9 +20,11 @@ if [[ -f .env ]]; then
   echo ".env already exists, leaving it untouched."
   exit 0
 fi
+office="$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 40)"
 pw="$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 32)"
 umask 077
 sed -e "s|^DB_PASSWORD=.*|DB_PASSWORD=${pw}|" \
+    -e "s|^DRIVICH_ONLYOFFICE_JWT_SECRET=.*|DRIVICH_ONLYOFFICE_JWT_SECRET=${office}|" \
     -e "s|^DRIVICH_UID=.*|DRIVICH_UID=$(id -u)|" \
     -e "s|^DRIVICH_GID=.*|DRIVICH_GID=$(id -g)|" "$template" > .env
 # Folders for the data, owned by you, so the containers can write to them.

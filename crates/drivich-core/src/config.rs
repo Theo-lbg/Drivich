@@ -32,6 +32,13 @@ pub struct Config {
     pub trust_proxy: bool,
     /// Skip the startup volume check (see `Storage::verify_mounts`). Dangerous.
     pub ignore_mount_check: bool,
+    /// Shared secret with the ONLYOFFICE Document Server. Editing Office files
+    /// in the browser is enabled only when it is set.
+    pub office_jwt_secret: Option<String>,
+    /// Where the server reaches the Document Server (internal address).
+    pub office_server_url: String,
+    /// Where the Document Server reaches this API (internal address).
+    pub office_app_url: String,
 }
 
 fn env_or(key: &str, default: &str) -> String {
@@ -70,6 +77,16 @@ impl Config {
             max_zip_streams: env_parse("DRIVICH_MAX_ZIP_STREAMS", 4usize).clamp(1, 64),
             trust_proxy: env_parse("DRIVICH_TRUST_PROXY", false),
             ignore_mount_check: env_parse("DRIVICH_IGNORE_MOUNT_CHECK_ERRORS", false),
+            office_jwt_secret: std::env::var("DRIVICH_ONLYOFFICE_JWT_SECRET")
+                .ok()
+                .map(|v| v.trim().to_string())
+                .filter(|v| v.len() >= 16),
+            office_server_url: env_or("DRIVICH_ONLYOFFICE_URL", "http://onlyoffice:80")
+                .trim_end_matches('/')
+                .to_string(),
+            office_app_url: env_or("DRIVICH_ONLYOFFICE_APP_URL", "http://server:2283")
+                .trim_end_matches('/')
+                .to_string(),
         })
     }
 }

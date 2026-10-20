@@ -10,12 +10,13 @@ export const session = $state<{
 	used: number;
 	quota: number | null;
 	disk: Me['disk'];
+	office: boolean;
 	immichUrl: string | null;
 	immichDefault: string | null;
 	setupRequired: boolean;
 	signupAllowed: boolean;
 	version: string;
-}>({ ready: false, user: null, used: 0, quota: null, disk: null, immichUrl: null, immichDefault: null, setupRequired: false, signupAllowed: false, version: '' });
+}>({ ready: false, user: null, used: 0, quota: null, disk: null, office: false, immichUrl: null, immichDefault: null, setupRequired: false, signupAllowed: false, version: '' });
 
 export async function loadSession() {
 	try {
@@ -41,6 +42,7 @@ export function applyMe(me: Me) {
 	session.used = me.used_bytes;
 	session.quota = me.quota_bytes;
 	session.disk = me.disk;
+	session.office = !!me.office;
 	session.immichUrl = me.immich_url;
 	session.immichDefault = me.immich_default_url;
 }

@@ -94,6 +94,8 @@ export interface Me {
 	used_bytes: number;
 	quota_bytes: number | null;
 	disk: { free_bytes: number; total_bytes: number } | null;
+	/** The server can open Office documents in an editor (ONLYOFFICE). */
+	office: boolean;
 	/** Effective Immich address: personal, else the server default. */
 	immich_url: string | null;
 	immich_default_url: string | null;

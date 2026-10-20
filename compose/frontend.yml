@@ -14,6 +14,7 @@ services:
     restart: unless-stopped
     environment:
       DRIVICH_SERVER_URL: http://server:2283
+      DRIVICH_OFFICE_URL: http://onlyoffice:80
       TZ: ${TZ:-Etc/UTC}
     ports:
       - "${DRIVICH_BIND_ADDRESS:-0.0.0.0}:${DRIVICH_PORT:-2283}:8080"

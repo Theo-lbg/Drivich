@@ -21,13 +21,14 @@
 | **Versions** | « Importer une nouvelle version » sur un fichier : l'ancien contenu est conservé (`DRIVICH_MAX_VERSIONS`, 20 par défaut, comptées dans le quota), consultable, téléchargeable, restaurable (rien n'est perdu : le contenu remplacé devient une version) ou supprimable |
 | **Commentaires** | sur les fichiers et dossiers, dans le panneau Détails et la visionneuse ; rôle commentateur ou plus pour écrire, l'auteur modifie, l'auteur ou le propriétaire supprime ; jamais exposés par les liens publics |
 | **Aperçu Office** | Word, Excel, PowerPoint, OpenDocument et RTF s'ouvrent dans la visionneuse : le worker les convertit en PDF avec LibreOffice à la première ouverture (un document à la fois, délai limité, sans accès réseau) ; `WITH_OFFICE=false` retire LibreOffice de l'image (~400 Mo de moins) |
+| **Édition Office** | option **ONLYOFFICE** : Word, Excel, PowerPoint et OpenDocument s'ouvrent dans un éditeur complet dans le navigateur (édition à plusieurs, enregistrement automatique en **nouvelle version** du fichier) ; lecteurs en lecture seule, éditeurs en écriture. Activation : voir « Édition des documents » ci-dessous |
 | **Mobile** | interface adaptée aux petits écrans et **installable** (manifeste + service worker qui ne met en cache que l'interface, jamais l'API ni vos fichiers) |
 | **Partage** | avec des utilisateurs (lecteur / commentateur / éditeur, hérité par les sous-dossiers), **liens publics** (expiration, révocation), « Partagés avec moi » |
 | **Langues** | interface en **français** (par défaut), English, Español et Deutsch ; choix par utilisateur dans Paramètres › Compte (ou « automatique » = langue du navigateur), aussi sur les pages de connexion ; ajouter une langue = un fichier JSON dans `web/src/lib/i18n/locales/` |
 | **Administration** | comptes, quotas, inscriptions, état du serveur, de la base et des tâches ; **pause et concurrence par type de tâche** ; **sauvegardes automatiques de la base** (dump quotidien, 14 conservés, téléchargeables) |
 | **Sécurité** | Argon2id, sessions révocables, CSRF, autorisations **uniquement côté serveur**, aucune synchronisation avec vos fichiers locaux |
 
-Limites connues (voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)) : pas d'application mobile native (l'interface web est adaptée aux téléphones et **installable** comme application, PWA), pas d'édition de documents dans le navigateur, pas encore d'extraction du texte des PDF et des documents Office pour la recherche ; l'API est décrite par un schéma **OpenAPI** généré ([docs/openapi.json](docs/openapi.json), servi aussi sur `/api/v1/openapi.json`) en plus de [docs/API.md](docs/API.md).
+Limites connues (voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)) : pas d'application mobile native (l'interface web est adaptée aux téléphones et **installable** comme application, PWA), l'édition de documents demande le conteneur ONLYOFFICE (~2-3 Go de RAM), pas encore d'extraction du texte des PDF et des documents Office pour la recherche ; l'API est décrite par un schéma **OpenAPI** généré ([docs/openapi.json](docs/openapi.json), servi aussi sur `/api/v1/openapi.json`) en plus de [docs/API.md](docs/API.md).
 
 ## Prérequis
 
@@ -70,6 +71,27 @@ docker compose up -d --build
 - Une image par service : `server/Dockerfile`, `worker/Dockerfile`, `web/Dockerfile` ; PostgreSQL utilise l'image officielle.
 - `docker-compose.yml` assemble les deux stacks : [`compose/backend.yml`](compose/backend.yml) (base, API, worker) et [`compose/frontend.yml`](compose/frontend.yml) (web).
 - La compilation (Rust et interface web) demande du temps et de la mémoire : sur une petite machine, préférez une release.
+
+### Édition des documents (ONLYOFFICE, optionnel)
+
+Pour modifier les .docx / .xlsx / .pptx dans le navigateur, Drivich pilote un
+[ONLYOFFICE Document Server](https://github.com/ONLYOFFICE/DocumentServer)
+(AGPL, ~2-3 Go de RAM) lancé dans le même compose. Dans `.env` :
+
+```bash
+DRIVICH_ONLYOFFICE_JWT_SECRET=<40 caractères aléatoires>   # généré par init-env.sh pour un nouveau .env
+COMPOSE_PROFILES=office
+```
+
+puis `docker compose up -d`. L'éditeur est servi par le conteneur web sous
+`/onlyoffice/` (même origine que Drivich). Derrière votre propre reverse proxy,
+autorisez les **WebSockets** et transmettez `X-Forwarded-Proto` / `X-Forwarded-Host`.
+Sans ce conteneur, les documents Office restent affichés en PDF (LibreOffice).
+Pour générer un secret dans un `.env` existant :
+
+```bash
+echo "DRIVICH_ONLYOFFICE_JWT_SECRET=$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 40)" >> .env
+```
 
 ### Sécurité du stockage (vérification des volumes)
 

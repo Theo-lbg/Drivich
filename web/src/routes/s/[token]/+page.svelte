@@ -75,7 +75,7 @@
 					{#if i > 0}<Icon name="chevron_right" size={20} />{/if}
 					<button class:cur={i === trail.length - 1} onclick={() => jump(i)}>{c.name}</button>
 				{/each}
-				<a class="btn outlined zip" href={urls.publicZip(token, trail[trail.length - 1].id)}><Icon name="download" size={18} />{t('file_browser.telecharger_zip')}</a>
+				{#if root.kind === 'folder'}<a class="btn outlined zip" href={urls.publicZip(token, trail[trail.length - 1].id)}><Icon name="download" size={18} />{t('file_browser.telecharger_zip')}</a>{/if}
 			</nav>
 			<ul>
 				{#each items as n (n.id)}
