@@ -64,7 +64,7 @@
 	.panel {
 		position: fixed;
 		right: 24px;
-		bottom: 0;
+		bottom: var(--bnav-h);
 		z-index: 800;
 		width: min(360px, calc(100vw - 16px));
 		background: var(--elevated);

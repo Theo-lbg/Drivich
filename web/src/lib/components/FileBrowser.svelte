@@ -210,9 +210,30 @@
 	const selectedItems = $derived(items.filter((n) => selected.has(n.id)));
 	const coarse = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
 
+	// Touch: a long press starts a selection, then taps add to or remove from it.
+	let pressTimer: ReturnType<typeof setTimeout> | undefined;
+	let longPressed = false;
+	function pressStart(e: PointerEvent, n: NodeItem) {
+		if (e.pointerType !== 'touch' || (e.target as HTMLElement).closest('button, a, input, textarea')) return;
+		longPressed = false;
+		clearTimeout(pressTimer);
+		pressTimer = setTimeout(() => {
+			longPressed = true;
+			toggleCheck(n);
+			navigator.vibrate?.(10);
+		}, 450);
+	}
+	function pressEnd() {
+		clearTimeout(pressTimer);
+	}
+
 	function select(e: MouseEvent, n: NodeItem) {
 		if ((e.target as HTMLElement).closest('button, a, input, textarea')) return;
-		if (coarse) return open(n);
+		if (longPressed) {
+			longPressed = false;
+			return;
+		}
+		if (coarse) return selected.size ? toggleCheck(n) : open(n);
 		if (e.shiftKey && lastClicked) {
 			const a = items.findIndex((i) => i.id === lastClicked);
 			const b = items.findIndex((i) => i.id === n.id);
@@ -311,6 +332,7 @@
 
 	function onContext(e: MouseEvent, n: NodeItem) {
 		e.preventDefault();
+		if (coarse) return; // the long press selects instead (see pressStart)
 		if (!selected.has(n.id)) {
 			selected = new Set([n.id]);
 			lastClicked = n.id;
@@ -432,6 +454,18 @@
 		if (its.length) headMenu = { x: r.left, y: r.bottom + 4, items: its };
 	}
 
+	const sortLabel = (k: SortKey) => (k === 'name' ? t('file_browser.nom') : k === 'size' ? t('details_panel.taille') : dateHeader);
+	let sortMenu = $state<{ x: number; y: number; items: MenuItem[] } | null>(null);
+	function sortMenuOpen(e: MouseEvent) {
+		const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+		const keys: SortKey[] = ['name', 'modified', 'size'];
+		sortMenu = {
+			x: r.left,
+			y: r.bottom + 4,
+			items: keys.map((k) => ({ label: sortLabel(k), icon: ui.sort === k ? (ui.order === 'asc' ? 'arrow_upward' : 'arrow_downward') : undefined, checked: ui.sort === k, run: () => sortBy(k) }))
+		};
+	}
+
 	function sortBy(key: SortKey) {
 		if (sortable) setSort(key);
 	}
@@ -476,6 +510,17 @@
 	});
 
 	const dateHeader = $derived(mode === 'trash' ? t('file_browser.date_de_suppression') : mode === 'recent' ? t('file_browser.derniere_ouverture') : t('file_browser.derniere_modification'));
+	/** Second line of a row on phones: "owner · date", like Drive. */
+	function subtitle(n: NodeItem): string {
+		const date = formatDate(dateOf(n));
+		let when = mode === 'drive' || mode === 'starred' ? t('file_browser.modifie_le', { date }) : date;
+		if (mode === 'trash') {
+			const d = daysLeft(n.trashed_at);
+			if (d !== null) when += ` · ${t('file_browser.days_left', { count: d })}`;
+		}
+		const mine = n.owner_id === session.user?.id;
+		return mine && (mode === 'drive' || mode === 'starred') ? when : `${mine ? 'moi' : n.owner_name} · ${when}`;
+	}
 	const dateOf = (n: NodeItem) => (mode === 'trash' ? n.trashed_at : mode === 'recent' ? (n.last_opened_at ?? n.updated_at) : n.updated_at);
 	const folders = $derived(items.filter((n) => n.kind === 'folder'));
 	const files = $derived(items.filter((n) => n.kind === 'file'));
@@ -596,6 +641,16 @@
 			/>
 		{/if}
 
+		<div class="msort">
+			<button class="chip" disabled={!sortable} onclick={sortMenuOpen} aria-haspopup="menu">
+				{sortLabel(ui.sort)}
+				{#if sortable}<Icon name={ui.order === 'asc' ? 'arrow_upward' : 'arrow_downward'} size={18} />{/if}
+			</button>
+			<button class="icon-btn" title={ui.layout === 'list' ? t('file_browser.affichage_en_grille') : t('file_browser.affichage_en_liste')} aria-label={ui.layout === 'list' ? t('file_browser.affichage_en_grille') : t('file_browser.affichage_en_liste')} onclick={() => setLayout(ui.layout === 'list' ? 'grid' : 'list')}>
+				<Icon name={ui.layout === 'list' ? 'grid_view' : 'view_list'} size={24} />
+			</button>
+		</div>
+
 		<div class="scroller">
 			{#if ui.layout === 'list'}
 				{#if items.length}
@@ -636,6 +691,10 @@
 							onkeydown={(e) => rowKey(e, n)}
 							ondblclick={() => open(n)}
 							oncontextmenu={(e) => onContext(e, n)}
+							onpointerdown={(e) => pressStart(e, n)}
+							onpointerup={pressEnd}
+							onpointermove={pressEnd}
+							onpointercancel={pressEnd}
 							ondragstart={(e) => dragStart(e, n)}
 							ondragover={(e) => folderDragOver(e, n)}
 							ondragleave={() => dropTarget === n.id && (dropTarget = null)}
@@ -646,7 +705,10 @@
 									<input type="checkbox" class="chk" aria-label={t('file_browser.select_item', { name: n.name })} checked={selected.has(n.id)} onchange={() => toggleCheck(n)} />
 									<span class="typeico"><Thumb node={n} size={24} /></span>
 								</span>
-								<span class="name ellipsis" title={n.name}>{n.name}</span>
+								<span class="nmcol">
+									<span class="name ellipsis" title={n.name}>{n.name}</span>
+									<span class="sub ellipsis">{subtitle(n)}</span>
+								</span>
 								{#if n.starred}<Icon name="star" size={16} fill class="starred" />{/if}
 							</div>
 							<div class="c-owner">
@@ -687,6 +749,10 @@
 									onkeydown={(e) => rowKey(e, n)}
 									ondblclick={() => open(n)}
 									oncontextmenu={(e) => onContext(e, n)}
+							onpointerdown={(e) => pressStart(e, n)}
+							onpointerup={pressEnd}
+							onpointermove={pressEnd}
+							onpointercancel={pressEnd}
 									ondragstart={(e) => dragStart(e, n)}
 									ondragover={(e) => folderDragOver(e, n)}
 									ondragleave={() => dropTarget === n.id && (dropTarget = null)}
@@ -749,6 +815,10 @@
 		onkeydown={(e) => rowKey(e, n)}
 		ondblclick={() => open(n)}
 		oncontextmenu={(e) => onContext(e, n)}
+							onpointerdown={(e) => pressStart(e, n)}
+							onpointerup={pressEnd}
+							onpointermove={pressEnd}
+							onpointercancel={pressEnd}
 		ondragstart={(e) => dragStart(e, n)}
 	>
 		<div class="cardhead">
@@ -761,6 +831,7 @@
 {/snippet}
 
 {#if menu}<Menu x={menu.x} y={menu.y} items={menu.items} onclose={() => (menu = null)} />{/if}
+{#if sortMenu}<Menu x={sortMenu.x} y={sortMenu.y} items={sortMenu.items} onclose={() => (sortMenu = null)} />{/if}
 {#if headMenu}<Menu x={headMenu.x} y={headMenu.y} items={headMenu.items} onclose={() => (headMenu = null)} />{/if}
 
 <style>
@@ -988,10 +1059,19 @@
 	.th.sortable:hover {
 		background: var(--hover-bg);
 	}
+	.nmcol {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+	}
 	.name {
 		flex: 1;
 		min-width: 0;
 		font-weight: 500;
+	}
+	.sub,
+	.msort {
+		display: none;
 	}
 	:global(.starred) {
 		color: var(--icon-gray);
@@ -1154,24 +1234,110 @@
 			display: none;
 		}
 	}
-	@media (max-width: 760px) {
-		.row {
-			grid-template-columns: minmax(120px, 1fr) 96px 48px;
-			padding-left: 8px;
-		}
-		.c-size,
-		.c-owner,
-		.hov {
-			display: none;
+	@media (max-width: 900px) {
+		.panel {
+			border-radius: 0;
 		}
 		.head {
-			padding-left: 12px;
+			padding: 8px 16px 0;
+			min-height: 48px;
 		}
-		.crumbs {
-			font-size: 20px;
-		}
+		.tools .icon-btn,
 		.seg {
 			display: none;
+		}
+		.crumbs,
+		h1 {
+			font-size: 20px;
+			line-height: 28px;
+		}
+		.crumb {
+			padding: 4px 6px;
+		}
+		.banner,
+		.selbar {
+			margin: 0 8px 8px;
+		}
+		.msort {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 4px 16px 4px 16px;
+		}
+		.chip {
+			display: inline-flex;
+			align-items: center;
+			gap: 8px;
+			height: 32px;
+			padding: 0 8px 0 12px;
+			border: 0;
+			border-radius: 16px;
+			background: transparent;
+			color: var(--text);
+			font-weight: 500;
+		}
+		.chip:not(:disabled) :global(svg) {
+			padding: 3px;
+			border-radius: 50%;
+			background: var(--accent-soft);
+			color: var(--accent-soft-text);
+			width: 24px;
+			height: 24px;
+			box-sizing: border-box;
+		}
+		.head-row,
+		.c-size,
+		.c-owner,
+		.c-date,
+		.hov,
+		.iconslot .chk {
+			display: none;
+		}
+		.row {
+			grid-template-columns: minmax(0, 1fr) 40px;
+			min-height: 72px;
+			padding: 0 8px 0 16px;
+			border-bottom: 0;
+		}
+		.row:hover .typeico,
+		.row.sel .typeico {
+			opacity: 1;
+		}
+		.row:not(.head-row):hover {
+			background: transparent;
+		}
+		.row.sel {
+			background: var(--select-bg) !important;
+		}
+		.c-name {
+			gap: 16px;
+		}
+		.nmcol {
+			flex-direction: column;
+			gap: 2px;
+		}
+		.name {
+			flex: none;
+			font-weight: 400;
+			font-size: 16px;
+			line-height: 24px;
+		}
+		.sub {
+			display: block;
+			color: var(--text-2);
+			font-size: 14px;
+			line-height: 20px;
+		}
+		.grid-wrap {
+			padding: 0 16px;
+		}
+		.grid.folders,
+		.grid.files {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 12px;
+		}
+		.cardbody {
+			height: 120px;
 		}
 	}
 </style>

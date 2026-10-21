@@ -8,8 +8,11 @@
 	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
 	import { setUnauthorizedHandler } from '$lib/api';
+	import AccountSheet from '$lib/components/AccountSheet.svelte';
 	import AppRail from '$lib/components/AppRail.svelte';
+	import BottomNav from '$lib/components/BottomNav.svelte';
 	import Dialogs from '$lib/components/Dialogs.svelte';
+	import Fab from '$lib/components/Fab.svelte';
 	import ShareDialog from '$lib/components/ShareDialog.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import Toasts from '$lib/components/Toasts.svelte';
@@ -114,6 +117,9 @@
 			<AppRail />
 		</div>
 	</div>
+	<BottomNav />
+	<Fab />
+	<AccountSheet />
 	<input bind:this={fileInput} type="file" multiple hidden onchange={onFiles} />
 	<input bind:this={folderInput} type="file" multiple hidden onchange={onFolder} {...{ webkitdirectory: true }} />
 	<UploadPanel />
@@ -153,7 +159,7 @@
 	}
 	@media (max-width: 900px) {
 		main {
-			padding: 0 8px 8px 8px;
+			padding: 0 0 var(--bnav-h) 0;
 		}
 	}
 </style>

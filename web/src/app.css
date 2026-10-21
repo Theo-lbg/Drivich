@@ -56,6 +56,14 @@
 	--font-body: Roboto, 'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif;
 	--topbar-h: 64px;
 	--sidebar-w: 256px;
+	--bnav-h: 0px;
+}
+
+@media (max-width: 900px) {
+	:root {
+		/* Bottom navigation bar of the phone layout. */
+		--bnav-h: calc(80px + env(safe-area-inset-bottom));
+	}
 }
 
 /* Theme: follows the device unless the user picked Light or Dark (data-theme on <html>). */

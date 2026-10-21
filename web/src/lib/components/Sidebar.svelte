@@ -4,8 +4,9 @@
 	import { t } from '$lib/i18n/index.svelte';
 	import { page } from '$app/state';
 	import { formatBytes, pct } from '$lib/format';
-	import { dialogs, nav, pickers } from '$lib/state/app.svelte';
-	import { session } from '$lib/state/session.svelte';
+	import { newMenuItems } from '$lib/newMenu';
+	import { nav } from '$lib/state/app.svelte';
+	import { storageUsage } from '$lib/state/session.svelte';
 	import { ui } from '$lib/state/ui.svelte';
 	import FolderTree from './FolderTree.svelte';
 	import Icon from './Icon.svelte';
@@ -30,20 +31,29 @@
 		menu = { x: r.left, y: r.bottom + 4 };
 	}
 
-	// Without a quota, show the whole disk (Drivich or not), like the storage page.
-	const diskUsed = $derived(session.disk ? Math.max(0, session.disk.total_bytes - session.disk.free_bytes) : null);
-	const usedShown = $derived(session.quota === null && diskUsed !== null ? diskUsed : session.used);
-	const total = $derived(session.quota ?? session.disk?.total_bytes ?? null);
+	const usage = $derived(storageUsage());
+	const usedShown = $derived(usage.used);
+	const total = $derived(usage.total);
 	const limitLabel = $derived(total ? formatBytes(total) : '');
+	const full = $derived(usage.pct >= 90);
 </script>
 
 {#if ui.drawer}<button class="scrim" aria-label={t('sidebar.fermer_le_menu')} onclick={() => (ui.drawer = false)}></button>{/if}
 <nav class="side" class:open={ui.drawer} aria-label={t('sidebar.navigation_principale')}>
-	<button class="new" onclick={openNew} disabled={blocked} title={blocked ? t('sidebar.vous_ne_pouvez_pas_modifier') : ''} aria-haspopup="menu">
+	<a class="mhead" href="/" aria-label={t('topbar.drivich_accueil')}><img src="/logo.png" alt="" width="36" height="33" /><span>Drivich</span></a>
+	<button class="new desk" onclick={openNew} disabled={blocked} title={blocked ? t('sidebar.vous_ne_pouvez_pas_modifier') : ''} aria-haspopup="menu">
 		<Icon name="add" size={28} /> <span>{t('sidebar.nouveau')}</span>
 	</button>
 
-	<ul onclick={() => (ui.drawer = false)} onkeydown={() => {}} role="presentation">
+	<ul class="mob" onclick={() => (ui.drawer = false)} onkeydown={() => {}} role="presentation">
+		<li><a class="item" class:act={path.startsWith('/recent')} href="/recent"><Icon name="schedule" size={24} />{t('recent.recents')}</a></li>
+		<li><a class="item" class:act={path.startsWith('/trash')} href="/trash"><Icon name="delete" size={24} />{t('advanced_search.corbeille')}</a></li>
+		<li class="gap"></li>
+		<li><a class="item" class:act={path === '/settings'} href="/settings"><Icon name="settings" size={24} />{t('topbar.parametres')}</a></li>
+		<li><a class="item" href="https://github.com/Theo-lbg" target="_blank" rel="noreferrer"><Icon name="help" size={24} />{t('drawer.aide_et_commentaires')}</a></li>
+	</ul>
+
+	<ul class="desk" onclick={() => (ui.drawer = false)} onkeydown={() => {}} role="presentation">
 		<li>
 			<a class="item" class:act={path === '/' } href="/"><Icon name="home" size={24} fill={path === '/'} />{t('sidebar.accueil')}</a>
 		</li>
@@ -67,7 +77,8 @@
 		<li><a class="item" class:act={path.startsWith('/settings/storage')} href="/settings/storage"><Icon name="cloud" size={24} />{t('sidebar.espace_de_stockage')}</a></li>
 	</ul>
 
-	<div class="storage">
+	<div class="storage" class:full>
+		<p class="mtitle"><Icon name={full ? 'error' : 'cloud'} size={24} fill={full} />{t('drawer.stockage', { pct: Math.round(usage.pct) })}</p>
 		<div class="bar" role="progressbar" aria-label={t('sidebar.espace_de_stockage_utilise')} aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(pct(usedShown, total))}>
 			<div style="width:{Math.max(pct(usedShown, total), usedShown > 0 ? 1 : 0)}%"></div>
 		</div>
@@ -82,12 +93,7 @@
 		y={menu.y}
 		minWidth={260}
 		onclose={() => (menu = null)}
-		items={[
-			{ label: t('dialogs.nouveau_dossier'), icon: 'create_new_folder', run: () => (dialogs.newFolder = { parent: nav.canWrite ? nav.folderId : null }) },
-			{ divider: true },
-			{ label: t('file_browser.importer_un_fichier'), icon: 'upload_file', run: () => pickers.files?.() },
-			{ label: t('file_browser.importer_un_dossier'), icon: 'drive_folder_upload', run: () => pickers.folder?.() }
-		]}
+		items={newMenuItems()}
 	/>
 {/if}
 
@@ -221,7 +227,51 @@
 	.scrim {
 		display: none;
 	}
+	.mhead,
+	.mob,
+	.mtitle {
+		display: none;
+	}
+	.storage.full .bar div {
+		background: var(--danger);
+	}
 	@media (max-width: 900px) {
+		.desk {
+			display: none;
+		}
+		.mhead {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			height: 64px;
+			margin: 0 -8px 8px -12px;
+			padding: 0 24px;
+			border-bottom: 1px solid var(--line);
+			color: var(--text-2);
+			font-family: var(--font);
+			font-size: 22px;
+			text-decoration: none;
+		}
+		.mob {
+			display: block;
+		}
+		.mob .item {
+			height: 48px;
+		}
+		.mtitle {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			margin: 0 0 8px;
+			color: var(--text);
+			font-size: 14px;
+		}
+		.storage.full .mtitle :global(svg) {
+			color: var(--danger);
+		}
+		.storage .bar + p {
+			margin: 12px 0 12px;
+		}
 		.side {
 			position: fixed;
 			z-index: 70;
