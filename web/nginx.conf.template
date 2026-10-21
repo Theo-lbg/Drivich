@@ -12,6 +12,9 @@ map $http_x_forwarded_proto $office_proto {
     default $scheme;
     https   https;
     http    http;
+    # Traefik (and others) announce WebSocket requests as ws / wss.
+    wss     https;
+    ws      http;
 }
 map $http_x_forwarded_host $office_host {
     default $http_x_forwarded_host;
