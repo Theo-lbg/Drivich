@@ -129,6 +129,7 @@ export const api = {
 	node: (id: string) => get<NodeItem>(`/nodes/${id}`),
 	path: (id: string) => get<{ items: Crumb[] }>(`/nodes/${id}/path`),
 	createFolder: (parent_id: string | null, name: string) => post<NodeItem>('/nodes/folder', { parent_id, name }),
+	createBlank: (parent_id: string | null, kind: string, name: string) => post<NodeItem>('/nodes/file', { parent_id, kind, name }),
 	rename: (id: string, name: string) => patch<NodeItem>(`/nodes/${id}`, { name }),
 	move: (id: string, parent_id: string | null) => patch<NodeItem>(`/nodes/${id}`, { parent_id }),
 	star: (id: string, starred: boolean) => patch<NodeItem>(`/nodes/${id}`, { starred }),

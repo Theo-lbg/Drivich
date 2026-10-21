@@ -307,6 +307,57 @@ where
     })
 }
 
+const BLANK_DOCX: &[u8] = include_bytes!("../assets/blank.docx");
+const BLANK_XLSX: &[u8] = include_bytes!("../assets/blank.xlsx");
+const BLANK_PPTX: &[u8] = include_bytes!("../assets/blank.pptx");
+
+/// Starting content of a new document of `kind`, plus the extension to give it.
+pub fn blank_content(kind: &str) -> Option<(&'static str, &'static [u8])> {
+    match kind {
+        "docx" => Some(("docx", BLANK_DOCX)),
+        "xlsx" => Some(("xlsx", BLANK_XLSX)),
+        "pptx" => Some(("pptx", BLANK_PPTX)),
+        "md" => Some(("md", b"")),
+        "txt" => Some(("txt", b"")),
+        _ => None,
+    }
+}
+
+/// Create a new file holding the blank template of `kind` (docx, xlsx, pptx, md, txt).
+pub async fn create_blank(
+    pool: &Pool,
+    storage: &Storage,
+    limits: &Limits,
+    user: Uuid,
+    parent: Option<Uuid>,
+    kind: &str,
+    name: &str,
+) -> Result<Node> {
+    let (ext, bytes) = blank_content(kind).ok_or_else(|| CoreError::bad("unknown document kind"))?;
+    let name = if name.to_lowercase().ends_with(&format!(".{ext}")) {
+        name.to_string()
+    } else {
+        format!("{name}.{ext}")
+    };
+    let info = create(pool, storage, limits, user, parent, &name, bytes.len() as i64).await?;
+    if bytes.is_empty() {
+        return finish_empty(pool, storage, limits, user, info.id).await;
+    }
+    let chunk: std::io::Result<Bytes> = Ok(Bytes::from_static(bytes));
+    let out = append(
+        pool,
+        storage,
+        limits,
+        user,
+        info.id,
+        0,
+        Box::pin(futures_util::stream::iter([chunk])),
+    )
+    .await?;
+    out.node
+        .ok_or_else(|| CoreError::bad("the document could not be created"))
+}
+
 /// Finalise an empty file (no chunk will ever be sent for it).
 pub async fn finish_empty(
     pool: &Pool,
@@ -515,4 +566,20 @@ pub async fn cleanup_expired(pool: &Pool, storage: &Storage) -> Result<u64> {
         }
     }
     Ok(removed)
+}
+
+#[cfg(test)]
+mod blank_tests {
+    use super::blank_content;
+
+    #[test]
+    fn office_templates_are_zip_archives() {
+        for kind in ["docx", "xlsx", "pptx"] {
+            let (ext, bytes) = blank_content(kind).unwrap();
+            assert_eq!(ext, kind);
+            assert!(bytes.starts_with(b"PK\x03\x04"), "{kind} is not a zip");
+        }
+        assert!(blank_content("md").unwrap().1.is_empty());
+        assert!(blank_content("exe").is_none());
+    }
 }

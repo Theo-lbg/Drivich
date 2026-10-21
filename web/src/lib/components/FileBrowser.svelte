@@ -8,7 +8,8 @@
 		askDelete, askMove, askNewVersion, askRename, askShare, deleteForever, downloadMany, downloadNode, folderHref, openNode, restoreNodes, setStarred, trashNodes
 	} from '$lib/actions';
 	import { daysLeft, formatBytes, formatDate, typeLabel } from '$lib/format';
-	import { dialogs, nav, pickers } from '$lib/state/app.svelte';
+	import { dialogs, nav } from '$lib/state/app.svelte';
+	import { newMenuItems } from '$lib/newMenu';
 	import { session } from '$lib/state/session.svelte';
 	import { setLayout, setSort, ui } from '$lib/state/ui.svelte';
 	import { enqueue, enqueueWithPaths, filesFromDataTransfer } from '$lib/state/uploads.svelte';
@@ -352,12 +353,7 @@
 		menu = {
 			x: e.clientX,
 			y: e.clientY,
-			items: [
-				{ label: t('dialogs.nouveau_dossier'), icon: 'create_new_folder', run: () => (dialogs.newFolder = { parent }) },
-				{ divider: true },
-				{ label: t('file_browser.importer_un_fichier'), icon: 'upload_file', run: () => pickers.files?.() },
-				{ label: t('file_browser.importer_un_dossier'), icon: 'drive_folder_upload', run: () => pickers.folder?.() }
-			]
+			items: newMenuItems(parent)
 		};
 	}
 
@@ -442,10 +438,7 @@
 		const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
 		const its: MenuItem[] = [];
 		if (nav.canWrite) {
-			its.push({ label: t('dialogs.nouveau_dossier'), icon: 'create_new_folder', run: () => (dialogs.newFolder = { parent }) });
-			its.push({ divider: true });
-			its.push({ label: t('file_browser.importer_un_fichier'), icon: 'upload_file', run: () => pickers.files?.() });
-			its.push({ label: t('file_browser.importer_un_dossier'), icon: 'drive_folder_upload', run: () => pickers.folder?.() });
+			its.push(...newMenuItems(parent));
 		}
 		if (folder && owned) {
 			its.push({ divider: true });

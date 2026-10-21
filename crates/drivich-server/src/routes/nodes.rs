@@ -11,7 +11,7 @@ use chrono::{DateTime, Utc};
 use drivich_core::models::{Node, UserBrief};
 use drivich_core::nodes::{self, BatchResult, ListParams, Page, SortBy, View};
 use drivich_core::search::{self, SearchParams, Suggestion};
-use drivich_core::{CoreError, users};
+use drivich_core::{CoreError, uploads, users};
 use serde::{Deserialize, Deserializer};
 use serde_json::{Value, json};
 use uuid::Uuid;
@@ -20,6 +20,7 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/nodes", get(list))
         .route("/nodes/folder", post(create_folder))
+        .route("/nodes/file", post(create_file))
         .route("/nodes/batch", post(batch))
         .route(
             "/nodes/{id}",
@@ -125,6 +126,33 @@ async fn create_folder(
 ) -> ApiResult<Json<Node>> {
     Ok(Json(
         nodes::create_folder(&st.pool, u.id, b.parent_id, &b.name).await?,
+    ))
+}
+
+#[derive(Deserialize)]
+struct NewBlank {
+    parent_id: Option<Uuid>,
+    /// docx, xlsx, pptx, md or txt.
+    kind: String,
+    name: String,
+}
+
+async fn create_file(
+    State(st): State<AppState>,
+    AuthUser(u): AuthUser,
+    Json(b): Json<NewBlank>,
+) -> ApiResult<Json<Node>> {
+    Ok(Json(
+        uploads::create_blank(
+            &st.pool,
+            &st.storage,
+            &st.limits,
+            u.id,
+            b.parent_id,
+            &b.kind,
+            &b.name,
+        )
+        .await?,
     ))
 }
 

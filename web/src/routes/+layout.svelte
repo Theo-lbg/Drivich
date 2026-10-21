@@ -20,6 +20,7 @@
 	import UploadPanel from '$lib/components/UploadPanel.svelte';
 	import Viewer from '$lib/components/Viewer.svelte';
 	import { nav, pickers } from '$lib/state/app.svelte';
+	import { installNewChords } from '$lib/newMenu';
 	import { loadSession, session } from '$lib/state/session.svelte';
 	import { loadUi, ui } from '$lib/state/ui.svelte';
 	import { enqueue, enqueueWithPaths } from '$lib/state/uploads.svelte';
@@ -49,7 +50,9 @@
 		};
 		window.addEventListener('dragover', stop);
 		window.addEventListener('drop', stop);
+		const stopChords = installNewChords();
 		return () => {
+			stopChords();
 			window.removeEventListener('dragover', stop);
 			window.removeEventListener('drop', stop);
 		};
