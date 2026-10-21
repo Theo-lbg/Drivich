@@ -8,6 +8,7 @@
 	import { viewer } from '$lib/state/app.svelte';
 	import { session } from '$lib/state/session.svelte';
 	import OfficeEditor from './OfficeEditor.svelte';
+	import TextEditor from './TextEditor.svelte';
 	import Comments from './Comments.svelte';
 	import Icon from './Icon.svelte';
 
@@ -25,6 +26,7 @@
 	/** Opened in the ONLYOFFICE editor when the server has one, else shown as a PDF. */
 	let editorFailed = $state(false);
 	const editing = $derived(office && session.office && !editorFailed);
+	const canEditText = $derived(!!node && !viewer.token && (node.role === 'owner' || node.role === 'editor'));
 	const officeCapable = $derived(!!node && isOffice(node));
 
 	const src = $derived(node ? (viewer.token ? urls.publicContent(viewer.token, node.id) : urls.content(node.id)) : '');
