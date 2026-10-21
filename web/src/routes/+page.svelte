@@ -68,8 +68,8 @@
 		<EmptyState title={t('routes.un_emplacement_centralise_pour_tous')} text="Faites glisser vos fichiers et dossiers ici ou utilisez le bouton « Nouveau » pour les importer." />
 	{:else}
 		{#if suggestions.length}
-			<h2>{t('routes.suggestions')}</h2>
-			<div class="cards">
+			<h2 class="sugg">{t('routes.suggestions')}</h2>
+			<div class="cards sugg">
 				{#each suggestions as n (n.id)}
 					<button class="card" onclick={() => openNode(n, recent)}>
 						<span class="head"><Thumb node={n} size={20} /><span class="n ellipsis">{n.name}</span></span>
@@ -105,7 +105,7 @@
 					<li>
 						<button onclick={() => openNode(n, recent)}>
 							<Thumb node={n} size={24} />
-							<span class="ln ellipsis">{n.name}</span>
+							<span class="lname"><span class="ln ellipsis">{n.name}</span><span class="lsub ellipsis">{(n.owner_id === session.user?.id ? 'moi' : n.owner_name) + ' · ' + formatDate(n.last_opened_at ?? n.updated_at)}</span></span>
 							<span class="lo ellipsis">{n.owner_id === session.user?.id ? 'moi' : n.owner_name}</span>
 							<span class="ld">{formatDate(n.last_opened_at ?? n.updated_at)}</span>
 							<span class="ls">{formatBytes(n.size)}</span>
@@ -228,28 +228,65 @@
 	.list button:hover {
 		background: var(--surface-2);
 	}
+	.lname {
+		display: flex;
+		min-width: 0;
+	}
 	.ln {
 		font-weight: 500;
+	}
+	.lsub {
+		display: none;
 	}
 	.lo,
 	.ld,
 	.ls {
 		color: var(--text-2);
 	}
-	@media (max-width: 760px) {
+	@media (max-width: 900px) {
 		.home {
-			padding: 16px;
-		}
-		.list button {
-			grid-template-columns: 24px 1fr 80px;
-		}
-		.lo,
-		.ls {
-			display: none;
+			padding: 8px 0 16px;
+			border-radius: 0;
 		}
 		h1 {
+			margin: 0 16px;
 			font-size: 22px;
 			line-height: 28px;
+		}
+		h2 {
+			margin: 20px 16px 8px;
+		}
+		.sugg {
+			display: none;
+		}
+		.folders {
+			margin: 0 16px;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+		.list button {
+			grid-template-columns: 24px minmax(0, 1fr);
+			gap: 16px;
+			min-height: 72px;
+			border-bottom: 0;
+		}
+		.lname {
+			flex-direction: column;
+			gap: 2px;
+		}
+		.ln {
+			font-weight: 400;
+			font-size: 16px;
+			line-height: 24px;
+		}
+		.lsub {
+			display: block;
+			color: var(--text-2);
+			font-size: 14px;
+		}
+		.lo,
+		.ld,
+		.ls {
+			display: none;
 		}
 	}
 </style>

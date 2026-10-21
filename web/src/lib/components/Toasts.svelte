@@ -21,7 +21,7 @@
 	.stack {
 		position: fixed;
 		left: 24px;
-		bottom: 24px;
+		bottom: calc(24px + var(--bnav-h));
 		z-index: 1200;
 		display: flex;
 		flex-direction: column;

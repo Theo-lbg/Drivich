@@ -29,6 +29,8 @@ export const ui = $state({
 	order: 'asc' as 'asc' | 'desc',
 	details: false,
 	drawer: false,
+	account: false,
+	mobile: false,
 	loaded: false
 });
 
@@ -74,7 +76,14 @@ export function setTheme(theme: Theme) {
 	applyTheme();
 }
 
+/** Phones and narrow windows (same breakpoint as the layout's CSS). */
+const MOBILE_QUERY = '(max-width: 900px)';
+
 if (typeof matchMedia !== 'undefined') {
+	const narrow = matchMedia(MOBILE_QUERY);
+	ui.mobile = narrow.matches;
+	narrow.addEventListener('change', () => (ui.mobile = narrow.matches));
+
 	// Follow the device when the user left the choice on "Automatic".
 	matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => ui.theme === 'system' && applyTheme());
 }

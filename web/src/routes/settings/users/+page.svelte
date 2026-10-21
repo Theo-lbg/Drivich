@@ -92,10 +92,10 @@
 	{#each rows as r (r.user.id)}
 		<div class="tr" role="row" class:off={r.user.disabled}>
 			<span class="u"><Avatar name={r.user.name} size={36} userId={r.user.id} version={r.user.avatar_version} /><span><b>{r.user.name}</b>{r.user.id === session.user?.id ? ' (vous)' : ''}<small>{r.user.email}</small></span></span>
-			<span>{formatBytes(r.used_bytes)}</span>
-			<span><input class="field q" type="number" min="0" step="0.1" placeholder="∞" value={r.user.quota_bytes ? +(r.user.quota_bytes / GB).toFixed(2) : ''} aria-label="Quota de {r.user.name} en Go" onchange={(e) => setQuota(r, e.currentTarget.value)} /></span>
-			<span><input type="checkbox" checked={r.user.is_admin} disabled={r.user.id === session.user?.id} aria-label={t('users.administrateur')} onchange={(e) => patch(r, { is_admin: e.currentTarget.checked })} /></span>
-			<span><input type="checkbox" checked={!r.user.disabled} disabled={r.user.id === session.user?.id} aria-label={t('users.compte_actif')} onchange={(e) => patch(r, { disabled: !e.currentTarget.checked })} /></span>
+			<span data-label={t('storage.utilise')}>{formatBytes(r.used_bytes)}</span>
+			<span data-label={t('users.quota_go')}><input class="field q" type="number" min="0" step="0.1" placeholder="∞" value={r.user.quota_bytes ? +(r.user.quota_bytes / GB).toFixed(2) : ''} aria-label="Quota de {r.user.name} en Go" onchange={(e) => setQuota(r, e.currentTarget.value)} /></span>
+			<span data-label={t('users.admin')}><input type="checkbox" checked={r.user.is_admin} disabled={r.user.id === session.user?.id} aria-label={t('users.administrateur')} onchange={(e) => patch(r, { is_admin: e.currentTarget.checked })} /></span>
+			<span data-label={t('users.actif')}><input type="checkbox" checked={!r.user.disabled} disabled={r.user.id === session.user?.id} aria-label={t('users.compte_actif')} onchange={(e) => patch(r, { disabled: !e.currentTarget.checked })} /></span>
 			<span><button class="btn sm" onclick={() => (resetFor = r)}>{t('login.mot_de_passe')}</button></span>
 		</div>
 	{/each}
@@ -240,8 +240,51 @@
 		margin: 0;
 	}
 	@media (max-width: 900px) {
+		/* Phones: one card per user instead of a table that scrolls sideways. */
+		.table {
+			border: 0;
+			display: flex;
+			flex-direction: column;
+			gap: 12px;
+			overflow: visible;
+		}
+		.th {
+			display: none;
+		}
 		.tr {
-			min-width: 760px;
+			grid-template-columns: 1fr 1fr;
+			grid-auto-rows: auto;
+			align-items: end;
+			gap: 12px 16px;
+			padding: 16px;
+			border: 1px solid var(--line);
+			border-radius: 16px;
+		}
+		.tr:last-child {
+			border-bottom: 1px solid var(--line);
+		}
+		.u {
+			grid-column: 1 / -1;
+		}
+		[data-label]::before {
+			content: attr(data-label);
+			display: block;
+			margin-bottom: 4px;
+			color: var(--text-2);
+			font-size: 12px;
+		}
+		.q {
+			width: 100%;
+		}
+		.tr > span:last-child {
+			grid-column: 1 / -1;
+		}
+		.tr > span:last-child .btn {
+			width: 100%;
+		}
+		.top {
+			flex-wrap: wrap;
+			gap: 12px;
 		}
 	}
 </style>

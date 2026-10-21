@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Theo-lbg
 
 import { api, ApiError } from '$lib/api';
+import { pct } from '$lib/format';
 import type { Me, User } from '$lib/types';
 
 export const session = $state<{
@@ -61,4 +62,12 @@ export async function signOut() {
 	} finally {
 		session.user = null;
 	}
+}
+
+/** Space used and its limit: the quota, or the whole disk when there is none (like the storage page). */
+export function storageUsage() {
+	const diskUsed = session.disk ? Math.max(0, session.disk.total_bytes - session.disk.free_bytes) : null;
+	const used = session.quota === null && diskUsed !== null ? diskUsed : session.used;
+	const total = session.quota ?? session.disk?.total_bytes ?? null;
+	return { used, total, pct: pct(used, total) };
 }

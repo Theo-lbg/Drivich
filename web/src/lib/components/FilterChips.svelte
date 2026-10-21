@@ -108,4 +108,17 @@
 		color: var(--accent);
 		padding-right: 12px;
 	}
+	@media (max-width: 900px) {
+		/* One scrolling row on phones, like Drive's filter chips. */
+		.chips {
+			flex-wrap: nowrap;
+			overflow-x: auto;
+			padding: 0 16px 8px;
+			scrollbar-width: none;
+		}
+		.chip {
+			flex: none;
+			white-space: nowrap;
+		}
+	}
 </style>

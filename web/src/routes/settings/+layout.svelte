@@ -84,19 +84,36 @@
 		overflow: auto;
 		padding: 24px 32px 48px;
 	}
-	@media (max-width: 760px) {
+	@media (max-width: 900px) {
 		.settings {
 			flex-direction: column;
+			border-radius: 0;
 		}
 		aside {
 			width: auto;
 			border-right: 0;
 			border-bottom: 1px solid var(--line);
-			padding: 12px;
+			padding: 12px 8px 4px;
 		}
+		h1 {
+			margin: 0 8px 8px;
+		}
+		/* Tabs share the width instead of scrolling sideways. */
 		nav {
 			flex-direction: row;
-			overflow: auto;
+			gap: 4px;
+		}
+		a {
+			flex: 1;
+			min-width: 0;
+			flex-direction: column;
+			justify-content: center;
+			gap: 2px;
+			height: 56px;
+			padding: 0 4px;
+			border-radius: 16px;
+			font-size: 12px;
+			text-align: center;
 		}
 		.content {
 			padding: 16px;

@@ -3,7 +3,7 @@
 <script lang="ts">
 	import { t } from '$lib/i18n/index.svelte';
 	import { goto } from '$app/navigation';
-	import { session, signOut } from '$lib/state/session.svelte';
+	import { session, signOut, storageUsage } from '$lib/state/session.svelte';
 	import { setTheme, ui } from '$lib/state/ui.svelte';
 	import Avatar from './Avatar.svelte';
 	import Icon from './Icon.svelte';
@@ -14,7 +14,14 @@
 	let menu = $state<{ x: number; y: number } | null>(null);
 	let apps = $state(false);
 
+	const storageFull = $derived(storageUsage().pct >= 90);
+
 	function openAccount(e: MouseEvent) {
+		// Phones get a full-screen account sheet instead of a popup menu.
+		if (ui.mobile) {
+			ui.account = true;
+			return;
+		}
 		const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
 		menu = { x: r.right - 280, y: r.bottom + 8 };
 	}
@@ -32,11 +39,11 @@
 	</a>
 	<SearchBar onmenu={() => (ui.drawer = !ui.drawer)} />
 	<div class="right">
-		<a class="icon-btn help" href="https://github.com/Theo-lbg" target="_blank" rel="noreferrer" title={t('topbar.aide_et_projet')} aria-label={t('topbar.aide')}><Icon name="help" size={24} /></a>
-		<a class="icon-btn" href="/settings" title={t('topbar.parametres')} aria-label={t('topbar.parametres')}><Icon name="settings" size={24} /></a>
-		<button class="icon-btn" data-apps-button title={t('apps_menu.applications_drivich')} aria-label={t('app_rail.applications')} aria-haspopup="menu" aria-expanded={apps} onclick={() => (apps = !apps)}><Icon name="apps" size={24} /></button>
+		<a class="icon-btn help desk" href="https://github.com/Theo-lbg" target="_blank" rel="noreferrer" title={t('topbar.aide_et_projet')} aria-label={t('topbar.aide')}><Icon name="help" size={24} /></a>
+		<a class="icon-btn desk" href="/settings" title={t('topbar.parametres')} aria-label={t('topbar.parametres')}><Icon name="settings" size={24} /></a>
+		<button class="icon-btn desk" data-apps-button title={t('apps_menu.applications_drivich')} aria-label={t('app_rail.applications')} aria-haspopup="menu" aria-expanded={apps} onclick={() => (apps = !apps)}><Icon name="apps" size={24} /></button>
 		{#if session.user}
-			<button class="acct" onclick={openAccount} aria-label="Compte {session.user.name}" aria-haspopup="menu"><Avatar name={session.user.name} size={32} userId={session.user.id} version={session.user.avatar_version} /></button>
+			<button class="acct" onclick={openAccount} aria-label="Compte {session.user.name}" aria-haspopup="menu"><Avatar name={session.user.name} size={ui.mobile ? 40 : 32} userId={session.user.id} version={session.user.avatar_version} />{#if storageFull}<span class="alert" aria-hidden="true">!</span>{/if}</button>
 		{/if}
 	</div>
 </header>
@@ -97,6 +104,7 @@
 		margin-left: auto;
 	}
 	.acct {
+		position: relative;
 		border: 0;
 		background: transparent;
 		padding: 4px;
@@ -106,21 +114,32 @@
 	.acct:hover {
 		box-shadow: 0 0 0 4px var(--hover-bg);
 	}
-	@media (max-width: 520px) {
-		.help {
-			display: none;
-		}
-		.top {
-			gap: 4px;
-			padding-right: 4px;
-		}
+	.alert {
+		position: absolute;
+		right: 0;
+		bottom: 0;
+		width: 16px;
+		height: 16px;
+		border-radius: 50%;
+		background: var(--danger);
+		color: var(--on-accent);
+		font-size: 11px;
+		font-weight: 700;
+		line-height: 16px;
+		text-align: center;
 	}
 	@media (max-width: 900px) {
-		.brand {
+		.brand,
+		.desk {
 			display: none;
 		}
 		.top {
-			padding-left: 8px;
+			padding: 4px 12px 4px 12px;
+			height: 72px;
+		}
+		.acct {
+			margin-left: 0;
+			padding: 0;
 		}
 	}
 </style>
