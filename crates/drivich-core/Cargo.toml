@@ -27,7 +27,7 @@ thiserror = "2.0.21"
 tokio = { version = "1.53.3", features = ["rt-multi-thread", "macros", "fs", "io-util", "time", "sync", "process"] }
 tracing = "0.1.44"
 url = "2.5.8"
-utoipa = { version = "5.5.0", features = ["chrono", "uuid"] }
+utoipa = { version = "6.0.0", features = ["chrono", "uuid"] }
 uuid = { version = "1.26.1", features = ["v4", "serde"] }
 
 [dev-dependencies]
