@@ -3,17 +3,12 @@
 
 //! Drivich HTTP API.
 
-mod error;
-mod extract;
-mod openapi;
-mod routes;
-mod state;
-
 use drivich_core::config::Config;
 use drivich_core::db;
 use drivich_core::storage::Storage;
 use drivich_core::uploads::Limits;
-use state::{AppState, Limiter};
+use drivich_server::routes;
+use drivich_server::state::{AppState, Limiter};
 use std::sync::Arc;
 use std::time::Duration;
 use tracing_subscriber::EnvFilter;

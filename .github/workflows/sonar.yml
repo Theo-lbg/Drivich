@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (c) 2026 Theo-lbg
+#
+# Coverage (unit + integration + Cucumber) and SonarCloud analysis.
+# Needs the repository secret SONAR_TOKEN (SonarCloud > My Account > Security).
+name: Sonar
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  sonar:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+        env:
+          POSTGRES_USER: drivich
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: drivich
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U drivich" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://drivich:ci-only-password@localhost:5432/drivich
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Sonar needs full history for blame and new-code detection
+      - uses: dtolnay/rust-toolchain@stable
+        with: { components: "clippy, llvm-tools-preview" }
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Tests with coverage (includes the Cucumber features)
+        run: cargo llvm-cov --workspace --lcov --output-path target/lcov.info --ignore-filename-regex '(tests/|build\.rs)'
+      - name: Check SonarCloud token
+        id: token
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: echo "present=$([ -n "$SONAR_TOKEN" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - name: SonarCloud scan
+        if: steps.token.outputs.present == 'true'
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

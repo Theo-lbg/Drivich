@@ -235,7 +235,7 @@ pub fn content_disposition(kind: &str, name: &str) -> String {
 
 /// Parse a single `Range: bytes=...` header against a file of `len` bytes.
 /// `Ok(None)`: no (usable) range, serve everything. `Err(())`: unsatisfiable.
-pub fn parse_range(value: &str, len: u64) -> Result<Option<(u64, u64)>, ()> {
+pub(crate) fn parse_range(value: &str, len: u64) -> Result<Option<(u64, u64)>, ()> {
     let Some(spec) = value.trim().strip_prefix("bytes=") else {
         return Ok(None);
     };
