@@ -13,15 +13,20 @@
 	// ---- rename -----------------------------------------------------------------------
 	let renameValue = $state('');
 	let busy = $state(false);
+	/** The extension of a file is fixed: only the part before it can be edited. */
+	const renameExt = $derived.by(() => {
+		const n = dialogs.rename;
+		const dot = n && n.kind === 'file' ? n.name.lastIndexOf('.') : -1;
+		return n && dot > 0 ? n.name.slice(dot) : '';
+	});
 	$effect(() => {
-		if (dialogs.rename) renameValue = dialogs.rename.name;
+		const n = dialogs.rename;
+		if (n) renameValue = n.name.slice(0, n.name.length - renameExt.length);
 	});
 
-	function selectBase(el: HTMLInputElement) {
-		const n = dialogs.rename;
+	function selectAll(el: HTMLInputElement) {
 		el.focus();
-		const dot = n && n.kind === 'file' ? n.name.lastIndexOf('.') : -1;
-		el.setSelectionRange(0, dot > 0 ? dot : el.value.length);
+		el.select();
 	}
 
 	async function doRename(e: SubmitEvent) {
@@ -30,8 +35,9 @@
 		if (!n || busy) return;
 		busy = true;
 		try {
-			if (renameValue.trim() && renameValue.trim() !== n.name) {
-				await api.rename(n.id, renameValue);
+			const next = renameValue.trim() + renameExt;
+			if (renameValue.trim() && next !== n.name) {
+				await api.rename(n.id, next);
 				refreshAll();
 			}
 			dialogs.rename = null;
@@ -95,7 +101,10 @@
 	<Dialog title={t('dialogs.renommer')} onclose={() => (dialogs.rename = null)} width={420}>
 		<form id="rename-form" onsubmit={doRename}>
 			<label class="field-label" for="rename-input">{t('dialogs.nom')}</label>
-			<input id="rename-input" class="field" bind:value={renameValue} maxlength="255" use:selectBase autocomplete="off" />
+			<div class="name-row">
+				<input id="rename-input" class="field" bind:value={renameValue} maxlength={255 - renameExt.length} use:selectAll autocomplete="off" />
+				{#if renameExt}<span class="ext">{renameExt}</span>{/if}
+			</div>
 		</form>
 		{#snippet actions()}
 			<button class="btn" onclick={() => (dialogs.rename = null)}>{t('dialogs.annuler')}</button>
@@ -157,6 +166,19 @@
 		color: var(--text-2);
 		font-size: 16px;
 		line-height: 24px;
+	}
+	.name-row {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.name-row .field {
+		flex: 1;
+		min-width: 0;
+	}
+	.ext {
+		color: var(--text-2);
+		font-size: 16px;
 	}
 	.picker {
 		border: 1px solid var(--line);
