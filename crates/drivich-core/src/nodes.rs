@@ -146,6 +146,14 @@ pub fn clean_name(name: &str) -> Result<String> {
     Ok(n.to_string())
 }
 
+/// Lowercased extension of a file name (empty for dotfiles and names without a dot).
+fn extension(name: &str) -> String {
+    match name.rsplit_once('.') {
+        Some((base, ext)) if !base.is_empty() => ext.to_ascii_lowercase(),
+        _ => String::new(),
+    }
+}
+
 fn role_literal(role: Role) -> String {
     format!("'{}'::text", role.as_str())
 }
@@ -422,6 +430,10 @@ pub async fn rename(pool: &Pool, user: Uuid, id: Uuid, name: &str) -> Result<Nod
     let (n, role) = perms::authorize(pool, user, id, Role::Editor).await?;
     if n.trashed_at.is_some() {
         return Err(CoreError::bad("restore the item before renaming it"));
+    }
+    // The extension decides how a file is opened: renaming keeps it.
+    if n.kind == "file" && extension(&n.name) != extension(&name) {
+        return Err(CoreError::bad("the file extension cannot be changed"));
     }
     sqlx::query("UPDATE nodes SET name = $2, updated_at = now() WHERE id = $1")
         .bind(id)
@@ -716,6 +728,14 @@ pub async fn load_ref(pool: &Pool, user: Uuid, id: Uuid, needed: Role) -> Result
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn extension_is_compared_case_insensitively() {
+        assert_eq!(extension("Rapport.DOCX"), "docx");
+        assert_eq!(extension("archive.tar.gz"), "gz");
+        assert_eq!(extension(".bashrc"), "");
+        assert_eq!(extension("README"), "");
+    }
 
     #[test]
     fn names_are_validated() {

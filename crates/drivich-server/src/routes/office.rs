@@ -43,6 +43,7 @@ const TOKEN_HOURS: i64 = 12;
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/nodes/{id}/office", get(editor_config))
+        .route("/nodes/{id}/office/title", post(sync_title))
         .route("/office/file/{token}", get(file))
         .route("/office/callback/{token}", post(callback))
 }
@@ -165,7 +166,7 @@ async fn editor_config(
             "lang": u.locale.clone().unwrap_or_else(|| "fr".into()),
             "callbackUrl": format!("{app}/api/v1/office/callback/{}", link_token(secret, "callback", n.id, blob)),
             "user": { "id": u.id, "name": u.name },
-            "customization": { "autosave": true, "forcesave": true, "compactHeader": true, "hideRightMenu": true },
+            "customization": { "autosave": true, "forcesave": true, "compactHeader": true, "hideRightMenu": true, "rename": edit },
         },
         "height": "100%",
         "width": "100%",
@@ -173,6 +174,42 @@ async fn editor_config(
     let token = sign(secret, &config);
     config["token"] = Value::String(token);
     Ok(Json(json!({ "server": PUBLIC_PREFIX, "config": config })))
+}
+
+/// After a rename, tells the Document Server the new title so the open editor
+/// shows it (its `meta` command). Best effort: the rename itself already succeeded.
+async fn sync_title(
+    State(st): State<AppState>,
+    AuthUser(u): AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<Value>> {
+    let secret = secret(&st)?;
+    let (n, _) = perms::authorize(&st.pool, u.id, id, Role::Editor).await?;
+    let Some(blob) = n.blob_id else {
+        return Err(CoreError::bad("this item is not a document").into());
+    };
+    let body = json!({
+        "c": "meta",
+        "key": blob.simple().to_string(),
+        "meta": { "title": n.name },
+    });
+    let res = reqwest::Client::new()
+        .post(format!("{}/command", st.cfg.office_server_url))
+        .header(
+            header::AUTHORIZATION,
+            format!("Bearer {}", sign(secret, &json!({ "payload": body }))),
+        )
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(
+            json!({ "c": "meta", "key": body["key"], "meta": body["meta"], "token": sign(secret, &body) })
+                .to_string(),
+        )
+        .send()
+        .await;
+    if let Err(e) = res {
+        tracing::warn!(error = %e, "could not push the new title to the Document Server");
+    }
+    Ok(Json(json!({ "ok": true })))
 }
 
 // --- calls from the Document Server --------------------------------------

@@ -5,7 +5,7 @@
 	import { api, urls } from '$lib/api';
 	import { askShare, downloadNode } from '$lib/actions';
 	import { classify, CLASS_COLOR, CLASS_ICON, formatBytes, isOffice } from '$lib/format';
-	import { viewer } from '$lib/state/app.svelte';
+	import { refreshAll, viewer } from '$lib/state/app.svelte';
 	import { session } from '$lib/state/session.svelte';
 	import OfficeEditor from './OfficeEditor.svelte';
 	import TextEditor from './TextEditor.svelte';
@@ -140,7 +140,7 @@
 			{:else if kind === 'pdf'}
 				{#key node.id}<iframe title={node.name} src={src}></iframe>{/key}
 			{:else if editing}
-				{#key node.id}<OfficeEditor {node} onfail={() => { editorFailed = true; }} />{/key}
+				{#key node.id}<OfficeEditor {node} onfail={() => { editorFailed = true; }} onrenamed={(name) => { viewer.items[viewer.index].name = name; refreshAll(); }} />{/key}
 			{:else if office && officeState === 'ready'}
 				{#key node.id}<iframe title={node.name} src={urls.preview(node.id)}></iframe>{/key}
 			{:else if office && officeState === 'pending'}

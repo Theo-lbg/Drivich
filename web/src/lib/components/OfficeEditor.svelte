@@ -3,9 +3,10 @@
 <script lang="ts">
 	import { t } from '$lib/i18n/index.svelte';
 	import { api } from '$lib/api';
+	import { errorToast } from '$lib/state/toast.svelte';
 	import type { NodeItem } from '$lib/types';
 
-	let { node, onfail }: { node: NodeItem; onfail: () => void } = $props();
+	let { node, onfail, onrenamed }: { node: NodeItem; onfail: () => void; onrenamed: (name: string) => void } = $props();
 	let host = $state<HTMLDivElement>();
 	let loading = $state(true);
 
@@ -28,6 +29,25 @@
 		return p;
 	}
 
+	/** Title typed in the editor, which has no extension (or the current one): the extension is kept. */
+	async function renameFromEditor(typed: unknown) {
+		if (typeof typed !== 'string') return;
+		const dot = node.name.lastIndexOf('.');
+		const ext = dot > 0 ? node.name.slice(dot) : '';
+		let base = typed.trim();
+		if (ext && base.toLowerCase().endsWith(ext.toLowerCase())) base = base.slice(0, base.length - ext.length).trim();
+		if (!base) return;
+		const next = base + ext;
+		if (next === node.name) return;
+		try {
+			const r = await api.rename(node.id, next);
+			onrenamed(r.name);
+			await api.syncOfficeTitle(node.id);
+		} catch (err) {
+			errorToast(err);
+		}
+	}
+
 	$effect(() => {
 		const el = host;
 		const id = node.id;
@@ -43,7 +63,9 @@
 			const slot = document.createElement('div');
 			slot.id = `office-${id}`;
 			el.replaceChildren(slot);
-			editor = new window.DocsAPI.DocEditor(slot.id, r.config);
+			// Events are client-side only: they are not part of the signed configuration.
+			const config = { ...(r.config as object), events: { onRequestRename: (e: { data?: unknown }) => renameFromEditor(e.data) } };
+			editor = new window.DocsAPI.DocEditor(slot.id, config);
 			loading = false;
 		})().catch(() => {
 			if (!dead) onfail();

@@ -333,13 +333,23 @@ pub async fn create_blank(
     kind: &str,
     name: &str,
 ) -> Result<Node> {
-    let (ext, bytes) = blank_content(kind).ok_or_else(|| CoreError::bad("unknown document kind"))?;
+    let (ext, bytes) =
+        blank_content(kind).ok_or_else(|| CoreError::bad("unknown document kind"))?;
     let name = if name.to_lowercase().ends_with(&format!(".{ext}")) {
         name.to_string()
     } else {
         format!("{name}.{ext}")
     };
-    let info = create(pool, storage, limits, user, parent, &name, bytes.len() as i64).await?;
+    let info = create(
+        pool,
+        storage,
+        limits,
+        user,
+        parent,
+        &name,
+        bytes.len() as i64,
+    )
+    .await?;
     if bytes.is_empty() {
         return finish_empty(pool, storage, limits, user, info.id).await;
     }
