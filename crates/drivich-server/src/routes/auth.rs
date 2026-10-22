@@ -29,7 +29,8 @@ pub fn routes() -> Router<AppState> {
 fn session_cookie(st: &AppState, token: String) -> Cookie<'static> {
     Cookie::build((COOKIE, token))
         .http_only(true)
-        .secure(st.cfg.cookie_secure)
+        // Configurable on purpose: instances behind a plain-HTTP reverse proxy must still log in.
+        .secure(st.cfg.cookie_secure) // NOSONAR
         .same_site(SameSite::Lax)
         .path("/")
         .max_age(time_days(st.cfg.session_days))

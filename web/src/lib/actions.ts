@@ -107,7 +107,7 @@ export async function deleteForever(items: NodeItem[]) {
 	} catch (e) {
 		errorToast(e);
 	}
-	refreshStorage();
+	void refreshStorage();
 	refreshAll();
 }
 
@@ -118,7 +118,7 @@ export async function emptyTrash() {
 	} catch (e) {
 		errorToast(e);
 	}
-	refreshStorage();
+	void refreshStorage();
 	refreshAll();
 }
 

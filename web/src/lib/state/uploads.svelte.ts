@@ -144,7 +144,7 @@ function pump() {
 		if (!next) return;
 		next.status = 'uploading';
 		running++;
-		run(next).finally(() => {
+		void run(next).finally(() => {
 			running--;
 			pump();
 		});

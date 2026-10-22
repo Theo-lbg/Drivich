@@ -9,15 +9,15 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 
 function inline(raw: string): string {
 	const codes: string[] = [];
-	let s = esc(raw).replace(/`([^`]+)`/g, (_, c) => `\u0000${codes.push(`<code>${c}</code>`) - 1}\u0000`);
+	let s = esc(raw).replace(/`([^`]+)`/g, (_, c) => `\uE000${codes.push(`<code>${c}</code>`) - 1}\uE001`);
 	s = s
 		.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, text, href) =>
 			/^(https?:|mailto:|\/|#)/i.test(href) ? `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>` : text
 		)
 		.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-		.replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>')
+		.replace(/(?<!\*)\*([^*\s][^*]*)\*/g, '<em>$1</em>')
 		.replace(/~~([^~]+)~~/g, '<del>$1</del>');
-	return s.replace(/\u0000(\d+)\u0000/g, (_, i) => codes[+i]);
+	return s.replace(/\uE000(\d+)\uE001/g, (_, i) => codes[+i]);
 }
 
 export function renderMarkdown(src: string): string {
@@ -50,8 +50,8 @@ export function renderMarkdown(src: string): string {
 			fence = [];
 			continue;
 		}
-		const h = /^(#{1,6})\s+(.*)$/.exec(line);
-		const li = /^\s*([-*+]|\d+\.)\s+(.*)$/.exec(line);
+		const h = /^(#{1,6})[ \t]+(\S.*|)$/.exec(line);
+		const li = /^[ \t]*([-*+]|\d+\.)[ \t]+(\S.*|)$/.exec(line);
 		if (h) {
 			flushPara();
 			closeList();
