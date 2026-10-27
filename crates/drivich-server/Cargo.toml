@@ -45,7 +45,7 @@ uuid = { version = "1.26.1", features = ["v4", "serde"] }
 zip = { version = "9", default-features = false, features = ["deflate", "chrono"] }
 
 [dev-dependencies]
-cucumber = "0.21"
+cucumber = "0.23"
 http-body-util = "0.1"
 tower = { version = "0.5.3", features = ["util"] }
 
