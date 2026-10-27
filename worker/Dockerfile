@@ -11,7 +11,7 @@
 # in the default compose files); build with --build-arg WITH_OFFICE=false to leave it
 # out (about 400 MB smaller; Office files then show a download button instead).
 
-FROM rust:1-slim-bookworm@sha256:a24e292b4af7bdee351a31d3a6379972a5652f0ea22a1b6d6883324ac4f5097c AS build
+FROM rust:1-slim-bookworm@sha256:86234e857a413004348b471d11a4ebe1aa92d2eae2b6b143cac68fd1ac3c48be AS build
 WORKDIR /src
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
