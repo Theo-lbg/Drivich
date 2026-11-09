@@ -6,7 +6,10 @@ import type {
 	ShareInfo, SortKey, Suggestion, User, UserBrief, VersionItem
 } from './types';
 
+import { DemoError, demoFileUrl, demoRequest, demoUploadChunk } from './demo/mock-api';
+
 const BASE = '/api/v1';
+const DEMO = import.meta.env.VITE_DEMO === 'true';
 
 export class ApiError extends Error {
 	constructor(
@@ -25,6 +28,15 @@ export function setUnauthorizedHandler(fn: () => void) {
 }
 
 async function request<T>(method: string, path: string, body?: unknown, init: RequestInit = {}): Promise<T> {
+	if (DEMO) {
+		// Static demo build: the API lives in the browser (see demo/mock-api.ts).
+		try {
+			return await demoRequest<T>(method, path, body);
+		} catch (e) {
+			if (e instanceof DemoError) throw new ApiError(e.status, e.code, e.message);
+			throw e;
+		}
+	}
 	const headers = new Headers(init.headers);
 	if (method !== 'GET' && method !== 'HEAD') headers.set('X-Drivich-CSRF', '1');
 	let payload: BodyInit | undefined;
@@ -100,6 +112,7 @@ export const api = {
 	updateMe: (b: { name?: string; immich_url?: string | null; locale?: string | null }) => patch<{ user: User }>('/me', b),
 	/** Upload a profile picture (any common image format; the server re-encodes it). */
 	uploadAvatar: async (file: Blob): Promise<{ user: User }> => {
+		if (DEMO) return request<{ user: User }>('PUT', '/me/avatar', {});
 		const res = await fetch(BASE + '/me/avatar', {
 			method: 'PUT',
 			headers: { 'X-Drivich-CSRF': '1', 'Content-Type': file.type || 'application/octet-stream' },
@@ -180,6 +193,7 @@ export const api = {
 	createUpload: (parent_id: string | null, name: string, size: number) =>
 		post<{ upload: { id: string; received: number; total_size: number } }>('/uploads', { parent_id, name, size }),
 	uploadOffset: async (id: string): Promise<number> => {
+		if (DEMO) return 0;
 		const res = await fetch(`${BASE}/uploads/${id}`, { method: 'HEAD', credentials: 'same-origin' });
 		if (!res.ok) throw new ApiError(res.status, 'error', res.statusText);
 		return Number(res.headers.get('upload-offset') ?? 0);
@@ -206,14 +220,14 @@ export const api = {
 export const urls = {
 	adminBackup: (name: string) => `${BASE}/admin/backups/${encodeURIComponent(name)}/download`,
 	avatar: (userId: string, version: number) => `${BASE}/users/${userId}/avatar?v=${version}`,
-	download: (id: string) => `${BASE}/nodes/${id}/download`,
-	content: (id: string) => `${BASE}/nodes/${id}/content`,
+	download: (id: string) => (DEMO ? demoFileUrl(id, 'content') : `${BASE}/nodes/${id}/download`),
+	content: (id: string) => (DEMO ? demoFileUrl(id, 'content') : `${BASE}/nodes/${id}/content`),
 	zip: (id: string) => `${BASE}/nodes/${id}/zip`,
 	zipSelection: (ids: string[]) => `${BASE}/nodes/zip?ids=${ids.join(',')}`,
 	publicZip: (t: string, id: string) => `${BASE}/public/${t}/nodes/${id}/zip`,
 	preview: (id: string) => `${BASE}/nodes/${id}/preview`,
 	versionDownload: (id: string, version: string) => `${BASE}/nodes/${id}/versions/${version}/download`,
-	thumb: (id: string) => `${BASE}/nodes/${id}/thumbnail`,
+	thumb: (id: string) => (DEMO ? demoFileUrl(id, 'thumb') : `${BASE}/nodes/${id}/thumbnail`),
 	publicDownload: (t: string, id: string) => `${BASE}/public/${t}/nodes/${id}/download`,
 	publicContent: (t: string, id: string) => `${BASE}/public/${t}/nodes/${id}/content`,
 	publicThumb: (t: string, id: string) => `${BASE}/public/${t}/nodes/${id}/thumbnail`
@@ -226,6 +240,7 @@ export function uploadChunk(
 	onProgress: (loaded: number) => void,
 	signal: AbortSignal
 ): Promise<{ node: NodeItem | null; received: number }> {
+	if (DEMO) return Promise.resolve(demoUploadChunk(uploadId, blob));
 	return new Promise((resolve, reject) => {
 		const xhr = new XMLHttpRequest();
 		xhr.open('PATCH', `${BASE}/uploads/${uploadId}`);

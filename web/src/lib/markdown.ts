@@ -11,7 +11,7 @@ function inline(raw: string): string {
 	const codes: string[] = [];
 	let s = esc(raw).replace(/`([^`]+)`/g, (_, c) => `\uE000${codes.push(`<code>${c}</code>`) - 1}\uE001`);
 	s = s
-		.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, text, href) =>
+		.replace(/\[([^[\]]+)\]\(([^()\s]+)\)/g, (_, text, href) =>
 			/^(https?:|mailto:|\/|#)/i.test(href) ? `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>` : text
 		)
 		.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')

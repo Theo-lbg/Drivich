@@ -8,6 +8,10 @@ import { defineConfig } from 'vite';
 
 // Drivich web is a single-page app: every route is served by index.html and
 // talks to the API under /api (proxied to the server in dev, by nginx in Docker).
+// Static demo for GitHub Pages: `npm run build:demo` (see src/lib/demo/mock-api.ts).
+const demo = process.env.VITE_DEMO === 'true';
+const demoBase = (process.env.DEMO_BASE ?? '') as '' | `/${string}`;
+
 const apiTarget = process.env.DRIVICH_API_URL ?? 'http://127.0.0.1:2283';
 
 export default defineConfig({
@@ -19,7 +23,10 @@ export default defineConfig({
 				runes: ({ filename }) =>
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
-			adapter: adapter({ fallback: 'index.html', precompress: false, strict: false })
+			adapter: adapter({ fallback: 'index.html', precompress: false, strict: false }),
+			// The demo lives under /<repository>/ on Pages and routes with the URL hash, so
+			// a reload or a shared link never needs a server-side fallback.
+			...(demo ? { paths: { base: demoBase }, router: { type: 'hash' }, serviceWorker: { register: false } } : {})
 		})
 	],
 	server: {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2026 Theo-lbg
 
-import { goto } from '$app/navigation';
+import { goto } from '$lib/nav';
 import { api, urls } from './api';
 import { dialogs, openViewer, refreshAll } from './state/app.svelte';
 import { refreshStorage } from './state/session.svelte';

@@ -2,7 +2,7 @@
 <!-- Copyright (c) 2026 Theo-lbg -->
 <script lang="ts">
 	import { browserLocale, i18n, LANGUAGES, setAutoLocale, setLocale, t } from '$lib/i18n/index.svelte';
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/nav';
 	import { api } from '$lib/api';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { refreshStorage, session, signOut } from '$lib/state/session.svelte';

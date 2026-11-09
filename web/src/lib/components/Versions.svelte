@@ -49,7 +49,7 @@
 			const r = await api.restoreVersion(node.id, v.id);
 			toast(t('versions.restored'));
 			onchanged(r.node);
-			refreshStorage();
+			void refreshStorage();
 			await load();
 		} catch (e) {
 			errorToast(e);
@@ -61,7 +61,7 @@
 			await api.deleteVersion(node.id, v.id);
 			items = items.filter((x) => x.id !== v.id);
 			toast(t('versions.deleted'));
-			refreshStorage();
+			void refreshStorage();
 		} catch (e) {
 			errorToast(e);
 		}

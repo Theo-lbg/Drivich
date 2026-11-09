@@ -6,6 +6,10 @@
 
 > Copyright © 2026 Theo-lbg — licence [AGPL-3.0-or-later](LICENSE). Projet indépendant, sans lien avec Immich ni avec aucun service de stockage en ligne ; les marques citées appartiennent à leurs propriétaires (voir [NOTICE](NOTICE)).
 
+<p align="center"><a href="https://theo-lbg.github.io/Drivich/"><b>▶ Essayer la démo en ligne</b></a><br><sub>L'interface complète tourne dans votre navigateur, sans serveur ni compte : vos modifications ne sont pas enregistrées.</sub></p>
+
+<p align="center"><img src="assets/screenshots/showcase.png" alt="Captures d'écran de Drivich : ordinateur et mobile, thèmes clair et sombre" width="100%"></p>
+
 ## Ce qui fonctionne aujourd'hui
 
 | | |

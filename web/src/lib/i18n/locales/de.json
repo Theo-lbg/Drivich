@@ -496,5 +496,6 @@
 	"editor.apercu": "Vorschau",
 	"editor.modifie": "Nicht gespeicherte Änderungen",
 	"editor.enregistre": "Gespeichert",
-	"editor.enregistrer": "Speichern"
+	"editor.enregistrer": "Speichern",
+	"demo.banner": "Live-Demo: Änderungen werden nicht gespeichert."
 }
