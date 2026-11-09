@@ -236,7 +236,7 @@ pub struct NewFolder {
 #[derive(Serialize, ToSchema)]
 pub struct NodePatch {
     pub name: Option<String>,
-    /// `null` moves the item to the root of My Drive.
+    /// `null` moves the item to the root of the user's files.
     pub parent_id: Option<Uuid>,
     pub starred: Option<bool>,
     pub description: Option<String>,

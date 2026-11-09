@@ -468,7 +468,7 @@
 		else localFilters = { ...localFilters, ...p };
 	}
 
-	/** "Récents" is grouped by when the file was last opened or modified, like Drive. */
+	/** "Récents" is grouped by when the file was last opened or modified. */
 	function activityOf(n: NodeItem): Date {
 		const opened = n.last_opened_at ? new Date(n.last_opened_at) : null;
 		const updated = new Date(n.updated_at);
@@ -503,7 +503,7 @@
 	});
 
 	const dateHeader = $derived(mode === 'trash' ? t('file_browser.date_de_suppression') : mode === 'recent' ? t('file_browser.derniere_ouverture') : t('file_browser.derniere_modification'));
-	/** Second line of a row on phones: "owner · date", like Drive. */
+	/** Second line of a row on phones: "owner · date". */
 	function subtitle(n: NodeItem): string {
 		const date = formatDate(dateOf(n));
 		let when = mode === 'drive' || mode === 'starred' ? t('file_browser.modifie_le', { date }) : date;

@@ -14,7 +14,7 @@
 	]);
 </script>
 
-<!-- Phone navigation, like Drive's bottom bar; the desktop keeps its sidebar. -->
+<!-- Phone navigation, bottom bar; the desktop keeps its sidebar. -->
 <nav class="bnav" aria-label={t('sidebar.navigation_principale')}>
 	{#each tabs as tab}
 		<a href={tab.href} class:on={tab.on} aria-current={tab.on ? 'page' : undefined}>

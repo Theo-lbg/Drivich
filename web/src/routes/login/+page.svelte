@@ -90,7 +90,7 @@
 		flex-direction: column;
 	}
 	img {
-		align-self: flex-start;
+		align-self: center;
 	}
 	h1 {
 		margin-top: 16px;

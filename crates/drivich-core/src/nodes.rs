@@ -313,7 +313,7 @@ fn offset_cursor(raw: Option<&str>) -> Result<i64> {
 }
 
 /// "Récents": files by last activity (opened or modified) — the caller's own and
-/// those shared with them — with Drive's Type / Contacts / Date / Source filters.
+/// those shared with them — with Type / Contacts / Date / Source filters.
 async fn list_recent(pool: &Pool, user: Uuid, limit: i64, p: &ListParams) -> Result<Page> {
     const ACTIVITY: &str = "GREATEST(COALESCE(n.last_opened_at, n.updated_at), n.updated_at)";
     let offset = offset_cursor(p.cursor.as_deref())?;

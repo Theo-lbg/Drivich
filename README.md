@@ -2,9 +2,9 @@
 
 # Drivich
 
-**Votre Drive, sur votre serveur.** Drivich est une alternative open source, légère et auto-hébergeable à Google Drive : une application web fidèle à l'esprit de Drive, un backend **Rust** performant, PostgreSQL pour les métadonnées, et vos fichiers sur votre propre disque.
+**Votre Drive, sur votre serveur.** Drivich est une solution open source, légère et auto-hébergeable de stockage et de partage de fichiers : une application web moderne et familière, un backend **Rust** performant, PostgreSQL pour les métadonnées, et vos fichiers sur votre propre disque.
 
-> Copyright © 2026 Theo-lbg — licence [AGPL-3.0-or-later](LICENSE). Projet indépendant, sans lien avec Google ni Immich (voir [NOTICE](NOTICE)).
+> Copyright © 2026 Theo-lbg — licence [AGPL-3.0-or-later](LICENSE). Projet indépendant, sans lien avec Immich ni avec aucun service de stockage en ligne ; les marques citées appartiennent à leurs propriétaires (voir [NOTICE](NOTICE)).
 
 ## Ce qui fonctionne aujourd'hui
 

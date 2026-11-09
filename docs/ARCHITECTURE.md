@@ -28,7 +28,7 @@ navigateur ──► web (nginx : fichiers statiques SvelteKit + proxy /api, str
 
 ## Points clés
 
-- **Arbre** : `nodes.parent_id` ; `NULL` = racine de « Mon Drive ». Corbeille : le dossier supprimé et tout ce qu'il contient reçoivent le même `trash_root_id` ; seule la racine de corbeille est listée, la restauration remet exactement ce qui a été supprimé.
+- **Arbre** : `nodes.parent_id` ; `NULL` = racine de « Mes fichiers ». Corbeille : le dossier supprimé et tout ce qu'il contient reçoivent le même `trash_root_id` ; seule la racine de corbeille est listée, la restauration remet exactement ce qui a été supprimé.
 - **Permissions** (`perms.rs`) : propriétaire, ou partage sur le nœud ou un de ses ancêtres (CTE récursive). Rôle insuffisant → 403 ; aucun accès → 404 (pas de fuite d'existence). Éléments en corbeille visibles du seul propriétaire.
 - **Téléversement reprenable** : `POST /uploads` → `PATCH` par blocs avec `Upload-Offset` → `HEAD` pour reprendre. La longueur du fichier `.part` sur disque fait foi ; finalisation atomique (rename + insertion `blobs`/`nodes` dans une transaction). Quota et taille maximale vérifiés avant d'écrire.
 - **Téléchargement** : flux depuis le disque, `Range` (une plage), `ETag`, `If-None-Match`, `If-Range`. Les types dangereux (HTML, XML) sont servis en `text/plain`, le SVG sous CSP `sandbox`.

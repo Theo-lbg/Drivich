@@ -1250,7 +1250,7 @@ export interface components {
             name?: string | null;
             /**
              * Format: uuid
-             * @description `null` moves the item to the root of My Drive.
+             * @description `null` moves the item to the root of the user's files.
              */
             parent_id?: string | null;
             starred?: boolean | null;
