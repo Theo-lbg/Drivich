@@ -2,7 +2,7 @@
 <!-- Copyright (c) 2026 Theo-lbg -->
 <script lang="ts">
 	import { t } from '$lib/i18n/index.svelte';
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/nav';
 
 	let { initial = '', onclose }: { initial?: string; onclose: () => void } = $props();
 

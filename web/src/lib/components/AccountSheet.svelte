@@ -2,7 +2,7 @@
 <!-- Copyright (c) 2026 Theo-lbg -->
 <script lang="ts">
 	import { t } from '$lib/i18n/index.svelte';
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/nav';
 	import { formatBytes } from '$lib/format';
 	import { session, signOut, storageUsage } from '$lib/state/session.svelte';
 	import { setTheme, ui } from '$lib/state/ui.svelte';

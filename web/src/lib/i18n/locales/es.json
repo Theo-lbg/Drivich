@@ -496,5 +496,6 @@
 	"editor.apercu": "Vista previa",
 	"editor.modifie": "Cambios sin guardar",
 	"editor.enregistre": "Guardado",
-	"editor.enregistrer": "Guardar"
+	"editor.enregistrer": "Guardar",
+	"demo.banner": "Demo en línea: los cambios no se guardan."
 }

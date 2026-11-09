@@ -496,5 +496,6 @@
 	"editor.apercu": "Preview",
 	"editor.modifie": "Unsaved changes",
 	"editor.enregistre": "Saved",
-	"editor.enregistrer": "Save"
+	"editor.enregistrer": "Save",
+	"demo.banner": "Live demo: your changes are not saved."
 }

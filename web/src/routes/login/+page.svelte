@@ -1,9 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <!-- Copyright (c) 2026 Theo-lbg -->
 <script lang="ts">
+	import { asset } from '$app/paths';
 	import { t } from '$lib/i18n/index.svelte';
 	import LanguageSelect from '$lib/components/LanguageSelect.svelte';
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/nav';
 	import { page } from '$app/state';
 	import { api, ApiError } from '$lib/api';
 	import { loadSession, session } from '$lib/state/session.svelte';
@@ -45,7 +46,7 @@
 
 <main class="auth">
 	<form class="card" onsubmit={submit}>
-		<img src="/logo.png" alt="Drivich" width="72" />
+		<img src={asset('logo.png')} alt="Drivich" width="72" />
 		<h1>{mode === 'login' ? t('login.connexion') : t('login.creer_un_compte')}</h1>
 		<p class="sub">{mode === 'login' ? t('login.accedez_a_vos_fichiers_sur') : t('login.rejoignez_ce_serveur_drivich')}</p>
 		{#if mode === 'signup'}

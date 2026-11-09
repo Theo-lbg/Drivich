@@ -2,7 +2,7 @@
 <!-- Copyright (c) 2026 Theo-lbg -->
 <script lang="ts">
 	import { t } from '$lib/i18n/index.svelte';
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/nav';
 	import { page } from '$app/state';
 	import { api } from '$lib/api';
 	import { folderHref } from '$lib/actions';

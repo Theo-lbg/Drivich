@@ -1,8 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <!-- Copyright (c) 2026 Theo-lbg -->
 <script lang="ts">
+	import { asset } from '$app/paths';
 	import { t } from '$lib/i18n/index.svelte';
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/nav';
 	import { session, signOut, storageUsage } from '$lib/state/session.svelte';
 	import { setTheme, ui } from '$lib/state/ui.svelte';
 	import Avatar from './Avatar.svelte';
@@ -34,7 +35,7 @@
 
 <header class="top">
 	<a class="brand" href="/" aria-label={t('topbar.drivich_accueil')}>
-		<img src="/logo.png" alt="" width="40" height="37" />
+		<img src={asset('logo.png')} alt="" width="40" height="37" />
 		<span>Drivich</span>
 	</a>
 	<SearchBar onmenu={() => (ui.drawer = !ui.drawer)} />

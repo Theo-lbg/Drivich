@@ -1,9 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <!-- Copyright (c) 2026 Theo-lbg -->
 <script lang="ts">
+	import { asset } from '$app/paths';
 	import { i18n, initI18n, setLocale, t } from '$lib/i18n/index.svelte';
 	import '../app.css';
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/nav';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
@@ -51,7 +52,18 @@
 		window.addEventListener('dragover', stop);
 		window.addEventListener('drop', stop);
 		const stopChords = installNewChords();
+		// Static demo (hash routing): internal links are root-relative, so route them ourselves.
+		const demoLinks = (e: MouseEvent) => {
+			if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+			const a = (e.target as Element | null)?.closest?.('a[href^="/"]') as HTMLAnchorElement | null;
+			if (!a || a.target === '_blank' || a.hasAttribute('download')) return;
+			e.preventDefault();
+			e.stopPropagation();
+			goto(a.getAttribute('href')!);
+		};
+		if (import.meta.env.VITE_DEMO === 'true') document.addEventListener('click', demoLinks, true);
 		return () => {
+			document.removeEventListener('click', demoLinks, true);
 			stopChords();
 			window.removeEventListener('dragover', stop);
 			window.removeEventListener('drop', stop);
@@ -105,12 +117,12 @@
 
 {#if !i18n.ready || !session.ready || (path === '/setup' && !session.setupRequired)}
 	<!-- Loading, or /setup requested after the installation was completed: the guard below redirects. -->
-	<div class="boot" role="status"><img src="/logo.png" alt="" width="64" /><span class="sr-only">{t('file_browser.chargement')}</span></div>
+	<div class="boot" role="status"><img src={asset('logo.png')} alt="" width="64" /><span class="sr-only">{t('file_browser.chargement')}</span></div>
 {:else if bare}
 	{@render children()}
 {:else if !session.user}
 	<!-- Signed out: the route guard is redirecting to /login; render nothing meanwhile. -->
-	<div class="boot" role="status"><img src="/logo.png" alt="" width="64" /><span class="sr-only">{t('layout_routes.redirection')}</span></div>
+	<div class="boot" role="status"><img src={asset('logo.png')} alt="" width="64" /><span class="sr-only">{t('layout_routes.redirection')}</span></div>
 {:else}
 	<div class="shell">
 		<Topbar />
@@ -131,8 +143,33 @@
 	<Viewer />
 {/if}
 <Toasts />
+{#if import.meta.env.VITE_DEMO === 'true'}
+	<div class="demo-badge" role="note">{t('demo.banner')}</div>
+{/if}
 
 <style>
+	.demo-badge {
+		position: fixed;
+		left: 50%;
+		bottom: 12px;
+		transform: translateX(-50%);
+		z-index: 60;
+		max-width: calc(100vw - 32px);
+		padding: 6px 14px;
+		border-radius: 16px;
+		background: var(--text);
+		color: var(--surface);
+		font-size: 12px;
+		line-height: 18px;
+		text-align: center;
+		pointer-events: none;
+		opacity: 0.88;
+	}
+	@media (max-width: 900px) {
+		.demo-badge {
+			bottom: calc(var(--bnav-h) + 8px);
+		}
+	}
 	.boot {
 		height: 100%;
 		display: flex;

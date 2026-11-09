@@ -496,5 +496,6 @@
 	"editor.apercu": "Aperçu",
 	"editor.modifie": "Modifications non enregistrées",
 	"editor.enregistre": "Enregistré",
-	"editor.enregistrer": "Enregistrer"
+	"editor.enregistrer": "Enregistrer",
+	"demo.banner": "Démo en ligne : vos modifications ne sont pas enregistrées."
 }

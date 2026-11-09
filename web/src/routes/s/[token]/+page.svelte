@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <!-- Copyright (c) 2026 Theo-lbg -->
 <script lang="ts">
+	import { asset } from '$app/paths';
 	import { t } from '$lib/i18n/index.svelte';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
@@ -61,7 +62,7 @@
 
 <div class="pub">
 	<header>
-		<a href="/" class="brand"><img src="/logo.png" alt="" width="36" /><span>Drivich</span></a>
+		<a href="/" class="brand"><img src={asset('logo.png')} alt="" width="36" /><span>Drivich</span></a>
 		<span class="tag">{t('s.partage_public_lecture_seule')}</span>
 	</header>
 	<main>

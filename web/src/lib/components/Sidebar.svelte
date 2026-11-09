@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <!-- Copyright (c) 2026 Theo-lbg -->
 <script lang="ts">
+	import { asset } from '$app/paths';
 	import { t } from '$lib/i18n/index.svelte';
 	import { page } from '$app/state';
 	import { formatBytes, pct } from '$lib/format';
@@ -40,7 +41,7 @@
 
 {#if ui.drawer}<button class="scrim" aria-label={t('sidebar.fermer_le_menu')} onclick={() => (ui.drawer = false)}></button>{/if}
 <nav class="side" class:open={ui.drawer} aria-label={t('sidebar.navigation_principale')}>
-	<a class="mhead" href="/" aria-label={t('topbar.drivich_accueil')}><img src="/logo.png" alt="" width="36" height="33" /><span>Drivich</span></a>
+	<a class="mhead" href="/" aria-label={t('topbar.drivich_accueil')}><img src={asset('logo.png')} alt="" width="36" height="33" /><span>Drivich</span></a>
 	<button class="new desk" onclick={openNew} disabled={blocked} title={blocked ? t('sidebar.vous_ne_pouvez_pas_modifier') : ''} aria-haspopup="menu">
 		<Icon name="add" size={28} /> <span>{t('sidebar.nouveau')}</span>
 	</button>

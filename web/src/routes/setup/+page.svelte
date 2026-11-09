@@ -1,9 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <!-- Copyright (c) 2026 Theo-lbg -->
 <script lang="ts">
+	import { asset } from '$app/paths';
 	import { t } from '$lib/i18n/index.svelte';
 	import LanguageSelect from '$lib/components/LanguageSelect.svelte';
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/nav';
 	import { api } from '$lib/api';
 	import { loadSession, session } from '$lib/state/session.svelte';
 
@@ -38,7 +39,7 @@
 
 <main class="auth">
 	<form class="card" onsubmit={submit}>
-		<img src="/logo.png" alt="Drivich" width="72" />
+		<img src={asset('logo.png')} alt="Drivich" width="72" />
 		<h1>{t('setup.bienvenue_sur_drivich')}</h1>
 		<p class="sub">{t('setup.creez_le_compte_administrateur_pour')}</p>
 		<label class="field-label" for="n">{t('dialogs.nom')}</label>

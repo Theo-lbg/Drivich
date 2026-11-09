@@ -2,7 +2,7 @@
 <!-- Copyright (c) 2026 Theo-lbg -->
 <script lang="ts">
 	import { errorMessage, t } from '$lib/i18n/index.svelte';
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/nav';
 	import { api, ApiError, type SearchOptions } from '$lib/api';
 	import {
 		askDelete, askMove, askNewVersion, askRename, askShare, deleteForever, downloadMany, downloadNode, folderHref, openNode, restoreNodes, setStarred, trashNodes
