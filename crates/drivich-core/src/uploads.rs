@@ -154,7 +154,7 @@ async fn open_session(
         "INSERT INTO upload_sessions (id, owner_id, parent_id, name, mime, total_size, expires_at, replace_node_id) \
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING {INFO_COLS}"
     );
-    let info: UploadInfo = sqlx::query_as(&sql)
+    let info: UploadInfo = sqlx::query_as(sqlx::AssertSqlSafe(sql))
         .bind(id)
         .bind(user)
         .bind(parent)

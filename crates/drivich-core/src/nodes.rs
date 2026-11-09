@@ -165,7 +165,10 @@ pub async fn get(pool: &Pool, user: Uuid, id: Uuid) -> Result<Node> {
 
 async fn fetch_one(pool: &Pool, id: Uuid, role: Role) -> Result<Node> {
     let sql = format!("{} WHERE n.id = $1", node_select(&role_literal(role)));
-    Ok(sqlx::query_as(&sql).bind(id).fetch_one(pool).await?)
+    Ok(sqlx::query_as(sqlx::AssertSqlSafe(sql))
+        .bind(id)
+        .fetch_one(pool)
+        .await?)
 }
 
 pub async fn list(pool: &Pool, user: Uuid, p: ListParams) -> Result<Page> {
@@ -261,7 +264,7 @@ pub async fn list(pool: &Pool, user: Uuid, p: ListParams) -> Result<Page> {
     })
 }
 
-fn push_sort_value(qb: &mut QueryBuilder<'_, Postgres>, sort: SortBy, c: &Cursor) -> Result<()> {
+fn push_sort_value(qb: &mut QueryBuilder<Postgres>, sort: SortBy, c: &Cursor) -> Result<()> {
     match sort {
         SortBy::Name => {
             qb.push_bind(
@@ -383,7 +386,7 @@ async fn list_trash(pool: &Pool, user: Uuid, limit: i64, cursor: Option<&str>) -
          ORDER BY n.trashed_at DESC, n.id LIMIT $2 OFFSET $3",
         node_select("'owner'::text")
     );
-    let mut rows: Vec<Node> = sqlx::query_as(&sql)
+    let mut rows: Vec<Node> = sqlx::query_as(sqlx::AssertSqlSafe(sql))
         .bind(user)
         .bind(limit + 1)
         .bind(offset)
@@ -697,7 +700,7 @@ pub async fn list_public_children(
          ORDER BY (CASE WHEN n.kind = 'folder' THEN 0 ELSE 1 END), lower(n.name), n.id LIMIT $2 OFFSET $3",
         node_select("'viewer'::text")
     );
-    let mut rows: Vec<Node> = sqlx::query_as(&sql)
+    let mut rows: Vec<Node> = sqlx::query_as(sqlx::AssertSqlSafe(sql))
         .bind(parent)
         .bind(limit + 1)
         .bind(offset)

@@ -88,7 +88,10 @@ pub async fn list(pool: &Pool, user: Uuid, node: Uuid) -> Result<Vec<Comment>> {
     let (_, role) = perms::authorize(pool, user, node, Role::Viewer).await?;
     let sql =
         format!("{SELECT} WHERE c.node_id = $1 ORDER BY c.created_at, c.id LIMIT {MAX_PER_NODE}");
-    let rows: Vec<Row> = sqlx::query_as(&sql).bind(node).fetch_all(pool).await?;
+    let rows: Vec<Row> = sqlx::query_as(sqlx::AssertSqlSafe(sql))
+        .bind(node)
+        .fetch_all(pool)
+        .await?;
     Ok(rows
         .into_iter()
         .map(|r| present(r, user, role == Role::Owner))
@@ -117,7 +120,10 @@ pub async fn add(pool: &Pool, user: Uuid, node: Uuid, body: &str) -> Result<Comm
     .fetch_one(pool)
     .await?;
     let sql = format!("{SELECT} WHERE c.id = $1");
-    let row: Row = sqlx::query_as(&sql).bind(id).fetch_one(pool).await?;
+    let row: Row = sqlx::query_as(sqlx::AssertSqlSafe(sql))
+        .bind(id)
+        .fetch_one(pool)
+        .await?;
     Ok(present(row, user, role == Role::Owner))
 }
 
@@ -125,7 +131,10 @@ pub async fn add(pool: &Pool, user: Uuid, node: Uuid, body: &str) -> Result<Comm
 /// cannot see the item gets `NotFound`, like everywhere else.
 async fn load(pool: &Pool, user: Uuid, id: Uuid) -> Result<(Row, Role)> {
     let sql = format!("{SELECT} WHERE c.id = $1");
-    let row: Row = sqlx::query_as(&sql).bind(id).fetch_one(pool).await?;
+    let row: Row = sqlx::query_as(sqlx::AssertSqlSafe(sql))
+        .bind(id)
+        .fetch_one(pool)
+        .await?;
     let (_, role) = perms::authorize(pool, user, row.node_id, Role::Viewer).await?;
     Ok((row, role))
 }
@@ -142,7 +151,10 @@ pub async fn edit(pool: &Pool, user: Uuid, id: Uuid, body: &str) -> Result<Comme
         .execute(pool)
         .await?;
     let sql = format!("{SELECT} WHERE c.id = $1");
-    let row: Row = sqlx::query_as(&sql).bind(id).fetch_one(pool).await?;
+    let row: Row = sqlx::query_as(sqlx::AssertSqlSafe(sql))
+        .bind(id)
+        .fetch_one(pool)
+        .await?;
     Ok(present(row, user, role == Role::Owner))
 }
 

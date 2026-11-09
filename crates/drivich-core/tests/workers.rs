@@ -154,11 +154,13 @@ async fn put(c: &Ctx, name: &str, data: &[u8]) -> (Node, Uuid) {
 }
 
 async fn state(c: &Ctx, col: &str, blob: Uuid) -> String {
-    sqlx::query_scalar(&format!("SELECT {col} FROM blobs WHERE id = $1"))
-        .bind(blob)
-        .fetch_one(&c.pool)
-        .await
-        .unwrap()
+    sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
+        "SELECT {col} FROM blobs WHERE id = $1"
+    ))) // test helper: `col` is a literal from the tests
+    .bind(blob)
+    .fetch_one(&c.pool)
+    .await
+    .unwrap()
 }
 
 /// A PNG header announcing a huge picture (no pixel data needed to be refused).

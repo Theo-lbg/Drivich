@@ -199,7 +199,7 @@ pub async fn suggest(pool: &Pool, user: Uuid, q: &str) -> Result<Vec<Suggestion>
          ORDER BY CASE WHEN lower(n.name) = $3 THEN 0 WHEN lower(n.name) LIKE $4 ESCAPE '\\' THEN 1 ELSE 2 END, \
                   n.updated_at DESC LIMIT 8"
     );
-    Ok(sqlx::query_as(&sql)
+    Ok(sqlx::query_as(sqlx::AssertSqlSafe(sql))
         .bind(user)
         .bind(format!("%{}%", escape_like(&lq)))
         .bind(&lq)

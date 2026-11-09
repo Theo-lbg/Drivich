@@ -11,7 +11,7 @@
 # in the default compose files); build with --build-arg WITH_OFFICE=false to leave it
 # out (about 400 MB smaller; Office files then show a download button instead).
 
-FROM rust:1-slim-bookworm@sha256:a24e292b4af7bdee351a31d3a6379972a5652f0ea22a1b6d6883324ac4f5097c AS build
+FROM rust:1-slim-bookworm@sha256:86234e857a413004348b471d11a4ebe1aa92d2eae2b6b143cac68fd1ac3c48be AS build
 WORKDIR /src
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
@@ -20,7 +20,7 @@ RUN --mount=type=cache,id=drivich-cargo-registry,sharing=locked,target=/usr/loca
     cargo build --release --locked -p drivich-worker \
  && cp target/release/drivich-worker /drivich-worker
 
-FROM debian:bookworm-slim@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587
+FROM debian:bookworm-slim@sha256:7ff6ba31527b9e336162fa061746c366c4b2032f4d2cff2078bea43f78efe3f8
 ARG WITH_FFMPEG=true
 ARG WITH_OFFICE=true
 # pg_dump must be at least as recent as the server (17): Debian bookworm only ships 15,
