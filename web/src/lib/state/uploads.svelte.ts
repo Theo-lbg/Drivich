@@ -175,7 +175,7 @@ async function run(job: UploadJob) {
 					job.status = 'done';
 					job.sent = job.size;
 					uploads.doneVersion++;
-					refreshStorage();
+					void refreshStorage();
 					scheduleRefresh();
 					return;
 				}

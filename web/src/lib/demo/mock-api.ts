@@ -208,7 +208,7 @@ const used = (s: Store) => [...s.nodes.values()].filter((n) => n.owner_id === ME
 // ---- request router --------------------------------------------------------------
 export async function demoRequest<T>(method: string, rawPath: string, body?: any): Promise<T> {
 	const s = init();
-	const u = new URL(rawPath, 'http://demo');
+	const u = new URL(rawPath, 'https://demo.invalid');
 	const path = u.pathname;
 	const q = u.searchParams;
 	const m = (re: RegExp) => path.match(re);

@@ -134,7 +134,8 @@ async fn logout(State(st): State<AppState>, jar: CookieJar) -> ApiResult<(Cookie
     if let Some(c) = jar.get(COOKIE) {
         auth::delete_session(&st.pool, c.value()).await?;
     }
-    let removal = Cookie::build((COOKIE, "")).path("/").build();
+    // Same attributes as the cookie that was set (including `Secure`), so the browser matches it.
+    let removal = session_cookie(&st, String::new());
     Ok((jar.remove(removal), Json(json!({ "ok": true }))))
 }
 
