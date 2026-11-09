@@ -993,7 +993,7 @@ export interface components {
             counts: components["schemas"]["Counts"];
             data_dir: string;
             database: components["schemas"]["DatabaseInfo"];
-            disk?: null | components["schemas"]["DiskInfo"];
+            disk?: components["schemas"]["DiskInfo"] | null;
             jobs: components["schemas"]["JobsInfo"];
             limits: components["schemas"]["Limits"];
             version: string;
@@ -1019,7 +1019,7 @@ export interface components {
             items: components["schemas"]["AdminUserRow"][];
         };
         AppendResponse: {
-            node?: null | components["schemas"]["Node"];
+            node?: components["schemas"]["Node"] | null;
             upload: components["schemas"]["UploadInfo"];
         };
         Backup: {
@@ -1179,7 +1179,7 @@ export interface components {
             password: string;
         };
         MeResponse: {
-            disk?: null | components["schemas"]["DiskInfo"];
+            disk?: components["schemas"]["DiskInfo"] | null;
             immich_default_url?: string | null;
             /** @description Effective Immich address: personal, else the server default. */
             immich_url?: string | null;

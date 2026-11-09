@@ -3097,10 +3097,10 @@
           "disk": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/DiskInfo"
               },
               {
-                "$ref": "#/components/schemas/DiskInfo"
+                "type": "null"
               }
             ]
           },
@@ -3202,10 +3202,10 @@
           "node": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/Node"
               },
               {
-                "$ref": "#/components/schemas/Node"
+                "type": "null"
               }
             ]
           },
@@ -3765,10 +3765,10 @@
           "disk": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/DiskInfo"
               },
               {
-                "$ref": "#/components/schemas/DiskInfo"
+                "type": "null"
               }
             ]
           },

@@ -55,7 +55,7 @@ pub async fn create(
         "INSERT INTO users (email, name, password_hash, is_admin, quota_bytes) \
          VALUES ($1, $2, $3, $4, $5) RETURNING {USER_COLS}"
     );
-    let res = sqlx::query_as::<_, User>(&sql)
+    let res = sqlx::query_as::<_, User>(sqlx::AssertSqlSafe(sql))
         .bind(email)
         .bind(name)
         .bind(hash)
@@ -87,7 +87,7 @@ pub async fn create_first_admin(
         "INSERT INTO users (email, name, password_hash, is_admin) \
          SELECT $1, $2, $3, true WHERE NOT EXISTS (SELECT 1 FROM users) RETURNING {USER_COLS}"
     );
-    let u: Option<User> = sqlx::query_as(&sql)
+    let u: Option<User> = sqlx::query_as(sqlx::AssertSqlSafe(sql))
         .bind(email)
         .bind(name)
         .bind(hash)
@@ -98,7 +98,7 @@ pub async fn create_first_admin(
 
 pub async fn find_by_email(pool: &Pool, email: &str) -> Result<Option<User>> {
     let sql = format!("SELECT {USER_COLS} FROM users WHERE lower(email) = lower($1)");
-    Ok(sqlx::query_as(&sql)
+    Ok(sqlx::query_as(sqlx::AssertSqlSafe(sql))
         .bind(email.trim())
         .fetch_optional(pool)
         .await?)
@@ -106,12 +106,17 @@ pub async fn find_by_email(pool: &Pool, email: &str) -> Result<Option<User>> {
 
 pub async fn get(pool: &Pool, id: Uuid) -> Result<User> {
     let sql = format!("SELECT {USER_COLS} FROM users WHERE id = $1");
-    Ok(sqlx::query_as(&sql).bind(id).fetch_one(pool).await?)
+    Ok(sqlx::query_as(sqlx::AssertSqlSafe(sql))
+        .bind(id)
+        .fetch_one(pool)
+        .await?)
 }
 
 pub async fn list(pool: &Pool) -> Result<Vec<User>> {
     let sql = format!("SELECT {USER_COLS} FROM users ORDER BY created_at");
-    Ok(sqlx::query_as(&sql).fetch_all(pool).await?)
+    Ok(sqlx::query_as(sqlx::AssertSqlSafe(sql))
+        .fetch_all(pool)
+        .await?)
 }
 
 /// Verify credentials. Always runs a hash verification so timing does not
@@ -212,7 +217,7 @@ pub async fn set_locale(pool: &Pool, id: Uuid, locale: Option<&str>) -> Result<U
         None => None,
     };
     let sql = format!("UPDATE users SET locale = $2 WHERE id = $1 RETURNING {USER_COLS}");
-    Ok(sqlx::query_as(&sql)
+    Ok(sqlx::query_as(sqlx::AssertSqlSafe(sql))
         .bind(id)
         .bind(locale)
         .fetch_one(pool)
@@ -226,7 +231,7 @@ pub async fn set_immich_url(pool: &Pool, id: Uuid, url: Option<&str>) -> Result<
         None => None,
     };
     let sql = format!("UPDATE users SET immich_url = $2 WHERE id = $1 RETURNING {USER_COLS}");
-    Ok(sqlx::query_as(&sql)
+    Ok(sqlx::query_as(sqlx::AssertSqlSafe(sql))
         .bind(id)
         .bind(url)
         .fetch_one(pool)
@@ -236,7 +241,7 @@ pub async fn set_immich_url(pool: &Pool, id: Uuid, url: Option<&str>) -> Result<
 pub async fn update_profile(pool: &Pool, id: Uuid, name: &str) -> Result<User> {
     let name = clean_name(name)?;
     let sql = format!("UPDATE users SET name = $2 WHERE id = $1 RETURNING {USER_COLS}");
-    Ok(sqlx::query_as(&sql)
+    Ok(sqlx::query_as(sqlx::AssertSqlSafe(sql))
         .bind(id)
         .bind(name)
         .fetch_one(pool)

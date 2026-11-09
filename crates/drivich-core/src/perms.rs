@@ -36,7 +36,10 @@ const NODE_REF_COLS: &str =
 
 pub async fn node_ref(pool: &Pool, id: Uuid) -> Result<NodeRef> {
     let sql = format!("SELECT {NODE_REF_COLS} FROM nodes WHERE id = $1");
-    Ok(sqlx::query_as(&sql).bind(id).fetch_one(pool).await?)
+    Ok(sqlx::query_as(sqlx::AssertSqlSafe(sql))
+        .bind(id)
+        .fetch_one(pool)
+        .await?)
 }
 
 /// Highest role granted to `user` on `node` through shares on the node itself
