@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2026 Theo-lbg
 
-//! Global search, modelled on the Google Drive behaviour: instant suggestions
+//! Global search, with the usual file-manager behaviour: instant suggestions
 //! while typing, then a full results page with Type / Owner / Date / Location
 //! filters and an "advanced search" form.
 //!
@@ -118,7 +118,7 @@ pub async fn search(pool: &Pool, user: Uuid, p: SearchParams) -> Result<Page> {
         qb.push(" AND n.updated_at < ").push_bind(to);
     }
     if let Some(folder) = p.in_folder {
-        // Direct children of the folder (Drive's "in this folder").
+        // Direct children of the folder ("in this folder").
         qb.push(" AND n.parent_id = ").push_bind(folder);
     }
     if let Some(q) = &q {

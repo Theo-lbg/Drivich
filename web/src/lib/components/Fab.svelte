@@ -18,7 +18,7 @@
 	}
 </script>
 
-<!-- "New" button of the phone layout, floating above the bottom bar like Drive's "+". -->
+<!-- "New" button of the phone layout, floating above the bottom bar. -->
 {#if !page.url.pathname.startsWith('/settings')}
 <button class="fab" onclick={open} disabled={blocked} title={blocked ? t('sidebar.vous_ne_pouvez_pas_modifier') : t('sidebar.nouveau')} aria-label={t('sidebar.nouveau')} aria-haspopup="menu">
 	<Icon name="add" size={32} />

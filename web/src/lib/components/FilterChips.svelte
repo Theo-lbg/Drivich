@@ -109,7 +109,7 @@
 		padding-right: 12px;
 	}
 	@media (max-width: 900px) {
-		/* One scrolling row on phones, like Drive's filter chips. */
+		/* One scrolling row on phones, for the filter chips. */
 		.chips {
 			flex-wrap: nowrap;
 			overflow-x: auto;

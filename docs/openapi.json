@@ -3996,7 +3996,7 @@
               "null"
             ],
             "format": "uuid",
-            "description": "`null` moves the item to the root of My Drive."
+            "description": "`null` moves the item to the root of the user's files."
           },
           "starred": {
             "type": [

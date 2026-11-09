@@ -7,7 +7,7 @@
 	import ImmichIcon from './ImmichIcon.svelte';
 </script>
 
-<!-- Slim rail on the right, like Drive's side panel of apps: quick access to Immich. -->
+<!-- Slim rail on the right, side panel of apps: quick access to Immich. -->
 <aside class="rail" aria-label={t('app_rail.applications')}>
 	{#if session.immichUrl}
 		<a class="btn-rail" href={session.immichUrl} target="_blank" rel="noopener noreferrer" title={t('app_rail.ouvrir_immich')} aria-label={t('app_rail.ouvrir_immich_nouvel_onglet')}>

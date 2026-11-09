@@ -29,7 +29,7 @@ async function createBlank(kind: BlankKind) {
 	}
 }
 
-/** Shortcut hint in the Drive style: "^C, then F". */
+/** Shortcut hint in the common style: "^C, then F". */
 const chord = (key: string) => t('new.raccourci', { key });
 
 /** Entries of the "New" menu, shared by the sidebar button, the mobile button and the context menus. */
@@ -58,7 +58,7 @@ export function newMenuItems(parent: string | null = nav.canWrite ? nav.folderId
 	return items;
 }
 
-/** Drive-style "C then F/U/I" keyboard chords. Returns a cleanup function. */
+/** "C then F/U/I" keyboard chords. Returns a cleanup function. */
 export function installNewChords(): () => void {
 	let armed = 0;
 	const onkey = (e: KeyboardEvent) => {

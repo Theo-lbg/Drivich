@@ -33,7 +33,8 @@ icon that this server already serves (for example /favicon-96.png) and displays
 it next to the link that opens it. "Immich" is a trademark of its owners.
 
 Drivich is an independent project. It is not affiliated with, endorsed by or
-derived from the source code of Google Drive or Immich. Its interface takes
-inspiration from the look and feel of Google Drive, and its architecture from
-the published design principles of Immich; no code from either was used.
-"Google Drive" and "Immich" are trademarks of their respective owners.
+derived from the source code of any third-party cloud storage service or of
+Immich. Its interface follows conventions common to file-management
+applications, and no code, design asset, font or trademark of another product
+is included. All product and company names mentioned are trademarks of their
+respective owners and are cited for identification only.

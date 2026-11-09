@@ -17,10 +17,10 @@
 <style>
 	.lang select {
 		height: 36px;
-		padding: 0 12px;
+		padding: 0 40px 0 18px;
 		border: 1px solid var(--line-strong);
 		border-radius: 18px;
-		background: transparent;
+		background-color: transparent;
 		color: var(--text-2);
 		font-size: 13px;
 	}

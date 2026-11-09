@@ -21,7 +21,7 @@ export function formatBytes(n: number | null | undefined): string {
 
 const DAY = 86_400_000;
 
-/** Drive-style date: time today, "5 Oct" this year, "5 Oct 2024" otherwise (localised). */
+/** Compact date: time today, "5 Oct" this year, "5 Oct 2024" otherwise (localised). */
 export function formatDate(iso: string | null | undefined): string {
 	if (!iso) return '—';
 	const d = new Date(iso);
@@ -77,7 +77,7 @@ export const CLASS_ICON: Record<FileClass, string> = {
 	file: 'draft'
 };
 
-/** Accent colour of a file type, as in Drive's list view. */
+/** Accent colour of a file type, in the list view. */
 export const CLASS_COLOR: Record<FileClass, string> = {
 	folder: 'var(--file-gray)',
 	image: 'var(--file-red)',
