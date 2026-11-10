@@ -68,7 +68,7 @@
 	}
 </script>
 
-<section class="versions" aria-label={t('versions.title')}>
+<section class="versions" id="details-versions" aria-label={t('versions.title')}>
 	<h3>{t('versions.title')}</h3>
 	<ul>
 		<li class="cur">

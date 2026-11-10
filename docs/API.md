@@ -19,6 +19,7 @@ Base : `/api/v1`. JSON partout, sauf octets de fichiers. Authentification par co
 | `GET /nodes/{id}` · `GET /nodes/{id}/path` | élément, fil d'Ariane |
 | `POST /nodes/folder` | `{parent_id,name}` |
 | `PATCH /nodes/{id}` | `{name?, parent_id?, starred?, description?}` |
+| `POST /nodes/{id}/copy` | « Créer une copie » d'un fichier : `{name}` (même extension que l'original) ; la copie va dans le même dossier si l'appelant peut y écrire, sinon à la racine de son Drive ; lecteur minimum, quota du propriétaire de la copie vérifié ; 400 pour un dossier ou un fichier à la corbeille |
 | `POST /nodes/{id}/trash` · `/restore` · `DELETE /nodes/{id}` · `POST /trash/empty` | corbeille |
 | `POST /nodes/batch` | `{ids, action: trash\|restore\|star\|unstar\|move\|delete, parent_id?}` |
 | `GET /nodes/{id}/download` · `/content` · `/thumbnail` · `POST /nodes/{id}/open` | octets (Range, ETag), aperçu inline, miniature, « récent » |

@@ -313,6 +313,13 @@ export async function demoRequest<T>(method: string, rawPath: string, body?: any
 		for (let cur: DNode | undefined = nodeOr404(s, r[1]); cur; cur = cur.parent_id ? s.nodes.get(cur.parent_id) : undefined) crumbs.unshift({ id: cur.id, name: cur.name });
 		return { items: crumbs } as T;
 	}
+	if ((r = m(/^\/nodes\/([^/]+)\/copy$/)) && method === 'POST') {
+		const src = nodeOr404(s, r[1]);
+		const id = nid(s, 'n');
+		const now = new Date().toISOString();
+		s.nodes.set(id, { ...src, id, name: String(body.name), owner_id: ME, owner_name: s.users[0].name, role: 'owner', starred: false, trashed_at: null, created_at: now, updated_at: now, last_opened_at: null });
+		return strip(s.nodes.get(id)!) as T;
+	}
 	if ((r = m(/^\/nodes\/([^/]+)\/trash$/))) {
 		nodeOr404(s, r[1]).trashed_at = new Date().toISOString();
 		return ok as T;

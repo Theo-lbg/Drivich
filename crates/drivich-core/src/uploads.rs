@@ -383,6 +383,97 @@ pub async fn finish_empty(
     finalize(pool, storage, limits, &s).await
 }
 
+/// "Make a copy": a new file with the same bytes as `id`, called `name`.
+///
+/// It lands next to the original when the caller may write in that folder, else
+/// at the root of the caller's own Drive (a viewer copies a shared file into
+/// their Drive). The bytes are copied rather than shared: the Office editor and
+/// the previews key their documents by blob, so two files must never share one.
+/// Folders cannot be copied.
+pub async fn copy_file(
+    pool: &Pool,
+    storage: &Storage,
+    user: Uuid,
+    id: Uuid,
+    name: &str,
+) -> Result<Node> {
+    let name = clean_name(name)?;
+    let (src, _) = perms::authorize(pool, user, id, Role::Viewer).await?;
+    let src_blob = match src.blob_id {
+        Some(b) if src.kind == "file" && src.trashed_at.is_none() => b,
+        _ => {
+            return Err(CoreError::bad(
+                "only a file outside the trash can be copied",
+            ));
+        }
+    };
+    // Same rule as renaming: the extension decides how a file is opened.
+    if nodes::extension(&src.name) != nodes::extension(&name) {
+        return Err(CoreError::bad("the file extension cannot be changed"));
+    }
+    let (parent, tree_owner) = match perms::authorize_parent(pool, user, src.parent_id).await {
+        Ok(owner) => (src.parent_id, owner),
+        Err(CoreError::NotFound | CoreError::Forbidden) => (None, user),
+        Err(e) => return Err(e),
+    };
+    check_quota(pool, tree_owner, src.size).await?;
+
+    let mime = src.mime.unwrap_or_else(|| detect_mime(&name, &[]));
+    let blob = Uuid::new_v4();
+    let dest = storage.blob_path(blob);
+    if let Some(dir) = dest.parent() {
+        tokio::fs::create_dir_all(dir).await?;
+    }
+    tokio::fs::copy(storage.blob_path(src_blob), &dest).await?;
+
+    let thumb_state = if thumbnailable(&mime) {
+        "pending"
+    } else {
+        "unsupported"
+    };
+    let inserted: Result<Uuid> = async {
+        let mut tx = pool.begin().await?;
+        sqlx::query("INSERT INTO blobs (id, size, mime, thumb_state) VALUES ($1, $2, $3, $4)")
+            .bind(blob)
+            .bind(src.size)
+            .bind(&mime)
+            .bind(thumb_state)
+            .execute(&mut *tx)
+            .await?;
+        let node_id: Uuid = sqlx::query_scalar(
+            "INSERT INTO nodes (owner_id, parent_id, kind, name, mime, size, blob_id) \
+             VALUES ($1, $2, 'file', $3, $4, $5, $6) RETURNING id",
+        )
+        .bind(tree_owner)
+        .bind(parent)
+        .bind(&name)
+        .bind(&mime)
+        .bind(src.size)
+        .bind(blob)
+        .fetch_one(&mut *tx)
+        .await?;
+        tx.commit().await?;
+        Ok(node_id)
+    }
+    .await;
+    let node_id = match inserted {
+        Ok(id) => id,
+        Err(e) => {
+            storage.remove_blob(blob).await;
+            return Err(e);
+        }
+    };
+
+    jobs::enqueue_blob(pool, jobs::kind::CHECKSUM, blob).await?;
+    if thumbnailable(&mime) {
+        jobs::enqueue_blob(pool, jobs::kind::THUMBNAIL, blob).await?;
+    }
+    if is_text_like(&mime, &name) {
+        jobs::enqueue_blob(pool, jobs::kind::INDEX_TEXT, blob).await?;
+    }
+    nodes::get(pool, user, node_id).await
+}
+
 async fn finalize(pool: &Pool, storage: &Storage, limits: &Limits, s: &Session) -> Result<Node> {
     if let Some(node) = s.replace_node_id {
         return finalize_version(pool, storage, limits, s, node).await;
