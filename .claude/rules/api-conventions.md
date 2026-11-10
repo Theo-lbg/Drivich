@@ -15,8 +15,8 @@ paths:
 - Rôles : viewer < commenter < editor < owner. Un partage sur un dossier vaut pour tout son sous-arbre.
 - **Une route nouvelle ou modifiée touche toujours** :
   1. `routes/*.rs` et `openapi.rs` (fonction `#[utoipa::path]` + liste `paths(...)` + schéma de la requête dans `components(schemas(...))`) ;
-  2. `docs/openapi.json` : `UPDATE_OPENAPI=1 cargo test -p drivich-server --lib openapi` ;
-  3. `web/src/lib/api-schema.d.ts` (`npm run gen:api`) et `docs/API.md` ;
+  2. `docs/openapi.json` : `UPDATE_OPENAPI=1 cargo test -p drivich-server --lib openapi` (la CI échoue si le fichier est périmé) ;
+  3. `web/src/lib/api-schema.d.ts` (`npm run gen:api`, qui télécharge le générateur via `npx`) et `docs/API.md` ;
   4. le client `web/src/lib/api.ts` et le faux serveur de la démo `web/src/lib/demo/mock-api.ts` ;
   5. un scénario Cucumber.
 - Les types hand-écrits (`web/src/lib/types.ts`) doivent garder exactement les champs du schéma généré (`api-conformance.ts` le vérifie à la compilation).

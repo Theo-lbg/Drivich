@@ -16,18 +16,18 @@
 	onMount(async () => {
 		try {
 			const n = await api.node(page.params.id ?? '');
-			if (n.kind === 'folder') return goto(folderHref(n.id), { replaceState: true });
+			if (n.kind === 'folder') return goto(folderHref(n.id), { replace: true });
 			if (n.trashed_at) {
 				toast(t('toast.restore_to_open'));
-				return goto('/trash', { replaceState: true });
+				return goto('/trash', { replace: true });
 			}
 			const behind = n.role !== 'owner' ? '/shared' : n.parent_id ? folderHref(n.parent_id) : '/drive';
-			await goto(behind, { replaceState: true });
+			await goto(behind, { replace: true });
 			openViewer([n], 0);
 			api.opened(n.id).catch(() => {});
 		} catch {
 			toast(t('file_page.introuvable'), { kind: 'error' });
-			goto('/drive', { replaceState: true });
+			goto('/drive', { replace: true });
 		}
 	});
 </script>
