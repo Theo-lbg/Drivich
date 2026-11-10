@@ -27,6 +27,7 @@ pub fn routes() -> Router<AppState> {
             get(get_node).patch(update).delete(delete_forever),
         )
         .route("/nodes/{id}/path", get(path))
+        .route("/nodes/{id}/copy", post(copy))
         .route("/nodes/{id}/trash", post(trash))
         .route("/nodes/{id}/restore", post(restore))
         .route("/trash/empty", post(empty_trash))
@@ -198,6 +199,25 @@ async fn update(
         Some(n) => Ok(Json(n)),
         None => Ok(Json(nodes::get(&st.pool, u.id, id).await?)),
     }
+}
+
+#[derive(Deserialize)]
+struct CopyBody {
+    /// Name of the copy (same extension as the original).
+    name: String,
+}
+
+/// "Make a copy" of a file: next to the original when the caller can write
+/// there, else in the caller's own Drive.
+async fn copy(
+    State(st): State<AppState>,
+    AuthUser(u): AuthUser,
+    Path(id): Path<Uuid>,
+    Json(b): Json<CopyBody>,
+) -> ApiResult<Json<Node>> {
+    Ok(Json(
+        uploads::copy_file(&st.pool, &st.storage, u.id, id, &b.name).await?,
+    ))
 }
 
 async fn trash(

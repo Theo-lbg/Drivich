@@ -147,6 +147,7 @@ export const api = {
 	move: (id: string, parent_id: string | null) => patch<NodeItem>(`/nodes/${id}`, { parent_id }),
 	star: (id: string, starred: boolean) => patch<NodeItem>(`/nodes/${id}`, { starred }),
 	describe: (id: string, description: string | null) => patch<NodeItem>(`/nodes/${id}`, { description }),
+	copy: (id: string, name: string) => post<NodeItem>(`/nodes/${id}/copy`, { name }),
 	trash: (id: string) => post<{ ok: boolean }>(`/nodes/${id}/trash`),
 	restore: (id: string) => post<NodeItem>(`/nodes/${id}/restore`),
 	deleteForever: (id: string) => del<{ ok: boolean }>(`/nodes/${id}`),

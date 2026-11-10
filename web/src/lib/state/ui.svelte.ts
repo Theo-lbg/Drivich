@@ -28,6 +28,8 @@ export const ui = $state({
 	sort: 'name' as SortKey,
 	order: 'asc' as 'asc' | 'desc',
 	details: false,
+	/** Section of the details panel to scroll to when it opens ("Manage versions"). */
+	detailsFocus: null as 'versions' | null,
 	drawer: false,
 	account: false,
 	mobile: false,

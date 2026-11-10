@@ -5,7 +5,7 @@
 	import { goto } from '$lib/nav';
 	import { api, ApiError, type SearchOptions } from '$lib/api';
 	import {
-		askDelete, askMove, askNewVersion, askRename, askShare, deleteForever, downloadMany, downloadNode, folderHref, openNode, restoreNodes, setStarred, trashNodes
+		askDelete, askMove, askNewVersion, askRename, askShare, copyLink, copyNode, deleteForever, downloadMany, downloadNode, folderHref, openNode, restoreNodes, setStarred, showDetails, trashNodes
 	} from '$lib/actions';
 	import { daysLeft, formatBytes, formatDate, typeLabel } from '$lib/format';
 	import { dialogs, nav } from '$lib/state/app.svelte';
@@ -310,20 +310,48 @@
 		const owner = targets.every(isOwner);
 		const editor = targets.every(canEdit);
 		const out: MenuItem[] = [];
+
+		// Same layout as Google Drive: open / download / rename / copy, then the
+		// "Share", "Organize" and "File information" groups, then the trash.
 		if (!one) out.push({ label: t('file_browser.telecharger_zip'), icon: 'download', run: () => downloadMany(targets) });
 		if (one) {
 			out.push({ label: t('file_browser.ouvrir'), icon: one.kind === 'folder' ? 'folder_open' : 'open_in_new', run: () => open(one) });
 			out.push({ label: one.kind === 'folder' ? t('file_browser.telecharger_zip') : t('file_browser.telecharger'), icon: 'download', run: () => downloadNode(one) });
 			if (one.kind === 'file' && editor) out.push({ label: t('file_browser.new_version'), icon: 'upload_file', run: () => askNewVersion(one) });
-			out.push({ divider: true });
 			if (editor) out.push({ label: t('dialogs.renommer'), icon: 'edit', hint: 'F2', run: () => askRename(one) });
-			if (owner) out.push({ label: t('file_browser.partager'), icon: 'share', run: () => askShare(one) });
+			// Folders cannot be copied (as in Drive); a viewer copies a file into their own Drive.
+			if (one.kind === 'file') out.push({ label: t('file_browser.creer_une_copie'), icon: 'content_copy', run: () => copyNode(one) });
+			out.push({ divider: true });
+			out.push({
+				label: t('file_browser.partager'),
+				icon: 'share',
+				submenu: [
+					...(owner ? [{ label: t('file_browser.partager'), icon: 'person_add', run: () => askShare(one) }] : []),
+					{ label: t('file_browser.copier_le_lien'), icon: 'link', run: () => copyLink(one) }
+				]
+			});
 		}
 		if (owner) {
-			const allStarred = targets.every((t) => t.starred);
-			out.push({ label: allStarred ? t('file_browser.retirer_des_favoris') : t('file_browser.ajouter_aux_favoris'), icon: allStarred ? 'star' : 'star', run: () => setStarred(targets, !allStarred) });
+			const allStarred = targets.every((x) => x.starred);
+			out.push({
+				label: t('file_browser.organiser'),
+				icon: 'folder_open',
+				submenu: [
+					{ label: t('file_browser.deplacer_vers_2'), icon: 'drive_file_move', run: () => askMove(targets) },
+					{ label: allStarred ? t('file_browser.retirer_des_favoris') : t('file_browser.ajouter_aux_favoris'), icon: 'star', run: () => setStarred(targets, !allStarred) }
+				]
+			});
 		}
-		if (owner) out.push({ label: t('file_browser.deplacer_vers_2'), icon: 'drive_file_move', run: () => askMove(targets) });
+		if (one) {
+			out.push({
+				label: one.kind === 'folder' ? t('file_browser.folder_info') : t('file_browser.file_info'),
+				icon: 'info',
+				submenu: [
+					{ label: t('details_panel.details'), icon: 'info', run: () => showDetails() },
+					...(one.kind === 'file' ? [{ label: t('file_browser.gerer_les_versions'), icon: 'history', run: () => showDetails('versions') }] : [])
+				]
+			});
+		}
 		if (owner) {
 			out.push({ divider: true });
 			out.push({ label: t('file_browser.mettre_dans_la_corbeille'), icon: 'delete', hint: t('file_browser.suppr'), run: () => trashNodes(targets) });

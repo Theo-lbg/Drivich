@@ -7,6 +7,7 @@ import { dialogs, openViewer, refreshAll } from './state/app.svelte';
 import { refreshStorage } from './state/session.svelte';
 import { t } from './i18n/index.svelte';
 import { errorToast, toast } from './state/toast.svelte';
+import { ui } from './state/ui.svelte';
 import { isPreviewable } from './format';
 import { enqueueVersion } from './state/uploads.svelte';
 import type { NodeItem } from './types';
@@ -142,6 +143,35 @@ export async function moveNodes(items: NodeItem[], parentId: string | null) {
 		errorToast(e);
 	}
 	refreshAll();
+}
+
+/** "Make a copy" of a file, named "Copy of …" in the current language, next to the original. */
+export async function copyNode(n: NodeItem) {
+	try {
+		await api.copy(n.id, t('file_browser.copy_of', { name: n.name }));
+		toast(t('toast.copy_created'));
+		void refreshStorage();
+	} catch (e) {
+		errorToast(e);
+	}
+	refreshAll();
+}
+
+/** Address that opens `n` for anyone who has access to it (the static demo routes with the URL hash). */
+export function nodeLink(n: NodeItem): string {
+	const route = n.kind === 'folder' ? folderHref(n.id) : `/file/${n.id}`;
+	return import.meta.env.VITE_DEMO === 'true' ? `${location.origin}${location.pathname}#${route}` : `${location.origin}${route}`;
+}
+
+export async function copyLink(n: NodeItem) {
+	if (await copyText(nodeLink(n))) toast(t('toast.link_copied'));
+	else toast(t('toast.link_copy_failed'), { kind: 'error' });
+}
+
+/** Open the details panel, optionally scrolled to a section ("Manage versions"). */
+export function showDetails(focus: 'versions' | null = null) {
+	ui.detailsFocus = focus;
+	ui.details = true;
 }
 
 export const askRename = (n: NodeItem) => (dialogs.rename = n);

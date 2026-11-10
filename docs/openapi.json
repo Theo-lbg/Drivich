@@ -1496,6 +1496,74 @@
         ]
       }
     },
+    "/api/v1/nodes/{id}/copy": {
+      "post": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Make a copy of a file (next to it when you can write there, else in your own Drive)",
+        "operationId": "copy_node",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "File id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The copy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A folder, a trashed file or a different extension",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
     "/api/v1/nodes/{id}/download": {
       "get": {
         "tags": [
@@ -3424,6 +3492,18 @@
             "items": {
               "$ref": "#/components/schemas/Comment"
             }
+          }
+        }
+      },
+      "CopyRequest": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the copy; it keeps the extension of the original."
           }
         }
       },

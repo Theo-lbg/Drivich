@@ -473,6 +473,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/nodes/{id}/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make a copy of a file (next to it when you can write there, else in your own Drive) */
+        post: operations["copy_node"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/nodes/{id}/download": {
         parameters: {
             query?: never;
@@ -1081,6 +1098,10 @@ export interface components {
         };
         CommentsResponse: {
             items: components["schemas"]["Comment"][];
+        };
+        CopyRequest: {
+            /** @description Name of the copy; it keeps the extension of the original. */
+            name: string;
         };
         Counts: {
             /** Format: int64 */
@@ -2457,6 +2478,51 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    copy_node: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description File id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CopyRequest"];
+            };
+        };
+        responses: {
+            /** @description The copy */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Node"];
+                };
+            };
+            /** @description A folder, a trashed file or a different extension */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Quota exceeded */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
             };
         };
     };

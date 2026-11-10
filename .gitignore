@@ -21,5 +21,8 @@ web/.vercel
 .vscode
 *.swp
 
-# Local tooling
-.claude
+# Local tooling. The Claude Code project setup (CLAUDE.md, .claude/settings.json,
+# rules, commands, skills, agents, hooks) is shared; only personal files stay out.
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/launch.json

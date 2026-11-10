@@ -234,6 +234,11 @@ pub struct NewFolder {
     pub name: String,
 }
 #[derive(Serialize, ToSchema)]
+pub struct CopyRequest {
+    /// Name of the copy; it keeps the extension of the original.
+    pub name: String,
+}
+#[derive(Serialize, ToSchema)]
 pub struct NodePatch {
     pub name: Option<String>,
     /// `null` moves the item to the root of the user's files.
@@ -440,6 +445,9 @@ fn delete_node() {}
 #[utoipa::path(get, path = "/api/v1/nodes/{id}/path", tag = "files", operation_id = "node_path", summary = "Breadcrumb of an item", params(("id" = Uuid, Path, description = "Item id")), responses((status = 200, description = "Ancestors, top first", body = PathResponse)), security(("session" = [])))]
 fn node_path() {}
 
+#[utoipa::path(post, path = "/api/v1/nodes/{id}/copy", tag = "files", operation_id = "copy_node", summary = "Make a copy of a file (next to it when you can write there, else in your own Drive)", params(("id" = Uuid, Path, description = "File id")), request_body = CopyRequest, responses((status = 200, description = "The copy", body = Node), (status = 400, description = "A folder, a trashed file or a different extension", body = ErrorBody), (status = 507, description = "Quota exceeded", body = ErrorBody)), security(("session" = [])))]
+fn copy_node() {}
+
 #[utoipa::path(post, path = "/api/v1/nodes/{id}/trash", tag = "files", operation_id = "trash_node", summary = "Move to the trash", params(("id" = Uuid, Path, description = "Item id")), responses((status = 200, description = "Done", body = OkResponse)), security(("session" = [])))]
 fn trash_node() {}
 
@@ -638,6 +646,7 @@ fn admin_download_backup() {}
         update_node,
         delete_node,
         node_path,
+        copy_node,
         trash_node,
         restore_node,
         empty_trash,
@@ -723,6 +732,7 @@ fn admin_download_backup() {}
         ProfilePatch,
         PasswordChange,
         NewFolder,
+        CopyRequest,
         NodePatch,
         BatchRequest,
         NewUpload,

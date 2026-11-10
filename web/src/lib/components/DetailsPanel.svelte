@@ -1,11 +1,13 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <!-- Copyright (c) 2026 Theo-lbg -->
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { t } from '$lib/i18n/index.svelte';
 	import { api } from '$lib/api';
 	import { formatBytes, formatDateLong, typeLabel } from '$lib/format';
 	import type { NodeItem } from '$lib/types';
 	import { errorToast } from '$lib/state/toast.svelte';
+	import { ui } from '$lib/state/ui.svelte';
 	import Avatar from './Avatar.svelte';
 	import Comments from './Comments.svelte';
 	import Versions from './Versions.svelte';
@@ -34,6 +36,16 @@
 	}
 
 	const canEdit = $derived(node?.role === 'owner' || node?.role === 'editor');
+
+	// "Manage versions" in the context menu opens the panel scrolled to the versions.
+	$effect(() => {
+		if (ui.detailsFocus !== 'versions' || !node) return;
+		void node.id;
+		tick().then(() => {
+			document.getElementById('details-versions')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+			ui.detailsFocus = null;
+		});
+	});
 </script>
 
 <aside class="details" aria-label={t('details_panel.details')}>

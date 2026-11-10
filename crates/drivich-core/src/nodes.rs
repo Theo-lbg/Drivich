@@ -147,7 +147,7 @@ pub fn clean_name(name: &str) -> Result<String> {
 }
 
 /// Lowercased extension of a file name (empty for dotfiles and names without a dot).
-fn extension(name: &str) -> String {
+pub(crate) fn extension(name: &str) -> String {
     match name.rsplit_once('.') {
         Some((base, ext)) if !base.is_empty() => ext.to_ascii_lowercase(),
         _ => String::new(),
