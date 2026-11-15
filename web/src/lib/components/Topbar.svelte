@@ -15,7 +15,7 @@
 	let menu = $state<{ x: number; y: number } | null>(null);
 	let apps = $state(false);
 
-	const storageFull = $derived(storageUsage().pct >= 90);
+	const storageFull = $derived(storageUsage().full);
 
 	function openAccount(e: MouseEvent) {
 		// Phones get a full-screen account sheet instead of a popup menu.

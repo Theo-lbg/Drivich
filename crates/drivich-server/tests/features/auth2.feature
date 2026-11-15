@@ -8,6 +8,7 @@ Feature: Account details
     When anonymous sends GET "/auth/status"
     Then the status is 200
     And the JSON at "/setup_required" is "false"
+    And the JSON at "/version" is not null
 
   Scenario: Setup cannot run again once users exist
     Given a user Alice
