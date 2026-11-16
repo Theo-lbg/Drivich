@@ -38,6 +38,8 @@ pub async fn make_thumbnail(pool: &Pool, storage: &Storage, blob: Uuid, max_px: 
 
     let result = if mime.starts_with("video/") {
         video_frame(&src, &tmp, max_px).await
+    } else if mime == "application/pdf" {
+        pdf_first_page(&src, &tmp, max_px).await
     } else if mime.starts_with("image/") {
         let (s, t) = (src.clone(), tmp.clone());
         tokio::task::spawn_blocking(move || image_thumb(&s, &t, max_px))
@@ -139,6 +141,36 @@ async fn video_frame(src: &Path, dest: &Path, max_px: u32) -> anyhow::Result<()>
         }
     }
     anyhow::bail!("ffmpeg could not extract a frame")
+}
+
+/// First page of a PDF as a JPEG, rendered by poppler's `pdftoppm` (streamed
+/// from disk, never loaded whole; the rendering is bounded by `max_px`).
+async fn pdf_first_page(src: &Path, dest: &Path, max_px: u32) -> anyhow::Result<()> {
+    // pdftoppm appends ".jpg" to the output prefix.
+    let prefix = dest.to_path_buf();
+    let out = tokio::time::timeout(
+        std::time::Duration::from_secs(60),
+        tokio::process::Command::new("pdftoppm")
+            .args(["-jpeg", "-singlefile", "-f", "1", "-l", "1", "-scale-to"])
+            .arg(max_px.to_string())
+            .arg(src)
+            .arg(&prefix)
+            .kill_on_drop(true)
+            .output(),
+    )
+    .await
+    .map_err(|_| anyhow::anyhow!("pdftoppm timed out"))?
+    .context("pdftoppm is not available")?;
+    let mut produced = prefix.clone().into_os_string();
+    produced.push(".jpg");
+    let produced = PathBuf::from(produced);
+    if !out.status.success() {
+        let _ = tokio::fs::remove_file(&produced).await;
+        anyhow::bail!("pdftoppm failed");
+    }
+    // `dest` ends in ".jpg.tmp": move the rendered file onto it.
+    tokio::fs::rename(&produced, dest).await?;
+    Ok(())
 }
 
 /// SHA-256 of a blob, streamed in 1 MiB steps.

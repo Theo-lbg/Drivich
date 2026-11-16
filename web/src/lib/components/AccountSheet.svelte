@@ -10,7 +10,7 @@
 	import Icon from './Icon.svelte';
 
 	const usage = $derived(storageUsage());
-	const full = $derived(usage.pct >= 90);
+	const full = $derived(usage.full);
 
 	function go(href: string) {
 		ui.account = false;

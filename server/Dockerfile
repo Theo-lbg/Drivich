@@ -6,6 +6,9 @@
 
 FROM rust:1-slim-bookworm@sha256:86234e857a413004348b471d11a4ebe1aa92d2eae2b6b143cac68fd1ac3c48be AS build
 WORKDIR /src
+# Version shown in the app, set by the release workflow from the git tag.
+ARG DRIVICH_VERSION=
+ENV DRIVICH_VERSION=$DRIVICH_VERSION
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
 RUN --mount=type=cache,id=drivich-cargo-registry,sharing=locked,target=/usr/local/cargo/registry \

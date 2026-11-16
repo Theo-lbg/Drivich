@@ -33,6 +33,13 @@ grep -q EMPTYFRAME "$src" && { : > "$last"; exit 0; }
 printf 'jpegdata' > "$last"
 "#;
 
+const PDFTOPPM: &str = r#"#!/bin/sh
+# Last two arguments: the PDF, then the output prefix (".jpg" is appended, like poppler does).
+for a in "$@"; do src="$prev"; out="$a"; prev="$a"; done
+grep -q FAILME "$src" && exit 1
+printf 'jpegdata' > "$out.jpg"
+"#;
+
 const SOFFICE: &str = r#"#!/bin/sh
 [ "$1" = "--version" ] && exit 0
 out=""; prev=""
@@ -65,6 +72,7 @@ fn setup() -> &'static PathBuf {
         std::fs::create_dir_all(&dir).unwrap();
         for (name, body) in [
             ("ffmpeg", FFMPEG),
+            ("pdftoppm", PDFTOPPM),
             ("soffice", SOFFICE),
             ("pg_dump", PG_DUMP),
         ] {
@@ -234,6 +242,23 @@ async fn thumbnails_cover_images_videos_and_failures() {
             .await
             .unwrap();
         assert_eq!(state(&c, "thumb_state", blob).await, want, "{name}");
+    }
+
+    // PDFs: first page rendered by pdftoppm; a failing render is marked, never retried.
+    for (name, body, want) in [
+        ("ok.pdf", &b"%PDF-1.7 page"[..], "ready"),
+        ("bad.pdf", &b"%PDF-1.7 FAILME"[..], "failed"),
+    ] {
+        let (_, blob) = put(&c, name, body).await;
+        thumbs::make_thumbnail(&c.pool, &c.storage, blob, 64)
+            .await
+            .unwrap();
+        assert_eq!(state(&c, "thumb_state", blob).await, want, "{name}");
+        let thumb = c.storage.thumb_path(blob);
+        assert_eq!(thumb.exists(), want == "ready", "{name}");
+        // No leftover from the temporary name.
+        assert!(!thumb.with_extension("jpg.tmp").exists(), "{name}");
+        assert!(!thumb.with_extension("jpg.tmp.jpg").exists(), "{name}");
     }
 
     // A blob that vanished meanwhile is not an error.

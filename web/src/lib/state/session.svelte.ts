@@ -64,10 +64,14 @@ export async function signOut() {
 	}
 }
 
-/** Space used and its limit: the quota, or the whole disk when there is none (like the storage page). */
+/**
+ * Space used by Drivich (the user's own files, like Immich's library) and its limit: the quota,
+ * or the whole disk when there is none. `full` also warns when the disk itself is nearly full.
+ */
 export function storageUsage() {
-	const diskUsed = session.disk ? Math.max(0, session.disk.total_bytes - session.disk.free_bytes) : null;
-	const used = session.quota === null && diskUsed !== null ? diskUsed : session.used;
+	const used = session.used;
 	const total = session.quota ?? session.disk?.total_bytes ?? null;
-	return { used, total, pct: pct(used, total) };
+	const diskUsed = session.disk ? Math.max(0, session.disk.total_bytes - session.disk.free_bytes) : null;
+	const basis = session.quota === null && diskUsed !== null ? pct(diskUsed, session.disk?.total_bytes ?? null) : pct(used, total);
+	return { used, total, pct: pct(used, total), full: basis >= 90 };
 }

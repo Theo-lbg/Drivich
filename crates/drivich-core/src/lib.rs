@@ -31,5 +31,20 @@ pub mod versions;
 
 pub use error::{CoreError, Result};
 
-/// Version of the running build (shown in the admin panel).
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+/// Version of the running build (shown in the sidebar and the admin panel).
+/// Release version: injected by the release build from the git tag (`DRIVICH_VERSION=1.2.3`),
+/// the workspace version otherwise (local and CI builds).
+pub const VERSION: &str = match option_env!("DRIVICH_VERSION") {
+    Some(v) if !v.is_empty() => v,
+    _ => env!("CARGO_PKG_VERSION"),
+};
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn version_is_a_plain_number_without_a_leading_v() {
+        assert!(!super::VERSION.is_empty());
+        assert!(!super::VERSION.starts_with('v'));
+        assert!(super::VERSION.chars().next().unwrap().is_ascii_digit());
+    }
+}

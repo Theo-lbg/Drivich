@@ -7,7 +7,8 @@
 	import { formatBytes, pct } from '$lib/format';
 	import { newMenuItems } from '$lib/newMenu';
 	import { nav } from '$lib/state/app.svelte';
-	import { storageUsage } from '$lib/state/session.svelte';
+	import { session, storageUsage } from '$lib/state/session.svelte';
+	import { isNewer, latestRelease, type Release } from '$lib/updates';
 	import { ui } from '$lib/state/ui.svelte';
 	import FolderTree from './FolderTree.svelte';
 	import Icon from './Icon.svelte';
@@ -36,7 +37,14 @@
 	const usedShown = $derived(usage.used);
 	const total = $derived(usage.total);
 	const limitLabel = $derived(total ? formatBytes(total) : '');
-	const full = $derived(usage.pct >= 90);
+	const full = $derived(usage.full);
+
+	let latest = $state<Release | null>(null);
+	const updateAvailable = $derived(!!latest && !!session.version && isNewer(latest.version, session.version));
+	$effect(() => {
+		if (import.meta.env.VITE_DEMO === 'true' || !session.user?.is_admin) return;
+		latestRelease().then((r) => (latest = r));
+	});
 </script>
 
 {#if ui.drawer}<button class="scrim" aria-label={t('sidebar.fermer_le_menu')} onclick={() => (ui.drawer = false)}></button>{/if}
@@ -78,13 +86,23 @@
 		<li><a class="item" class:act={path.startsWith('/settings/storage')} href="/settings/storage"><Icon name="cloud" size={24} />{t('sidebar.espace_de_stockage')}</a></li>
 	</ul>
 
-	<div class="storage" class:full>
-		<p class="mtitle"><Icon name={full ? 'error' : 'cloud'} size={24} fill={full} />{t('drawer.stockage', { pct: Math.round(usage.pct) })}</p>
-		<div class="bar" role="progressbar" aria-label={t('sidebar.espace_de_stockage_utilise')} aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(pct(usedShown, total))}>
-			<div style="width:{Math.max(pct(usedShown, total), usedShown > 0 ? 1 : 0)}%"></div>
+	<div class="foot">
+		<div class="storage" class:full>
+			<p class="mtitle"><Icon name={full ? 'error' : 'cloud'} size={24} fill={full} />{t('drawer.stockage', { pct: Math.round(usage.pct) })}</p>
+			<p class="dtitle">{t('sidebar.stockage')}</p>
+			<p class="amount">{limitLabel ? t('sidebar.used_of', { used: formatBytes(usedShown), total: limitLabel }) : t('sidebar.used', { used: formatBytes(usedShown) })}</p>
+			<div class="bar" role="progressbar" aria-label={t('sidebar.espace_de_stockage_utilise')} aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(pct(usedShown, total))}>
+				<div style="width:{Math.max(pct(usedShown, total), usedShown > 0 ? 1 : 0)}%"></div>
+			</div>
+			<a class="btn outlined manage" href="/settings/storage">{t('sidebar.gerer_le_stockage')}</a>
 		</div>
-		<p>{limitLabel ? t('sidebar.used_of', { used: formatBytes(usedShown), total: limitLabel }) : t('sidebar.used', { used: formatBytes(usedShown) })}</p>
-		<a class="btn outlined manage" href="/settings/storage">{t('sidebar.gerer_le_stockage')}</a>
+		<div class="srv">
+			<span class="state"><i aria-hidden="true"></i>{t('sidebar.serveur_en_ligne')}</span>
+			{#if session.version}<span class="ver">v{session.version}</span>{/if}
+		</div>
+		{#if updateAvailable && latest}
+			<a class="upd" href={latest.url} target="_blank" rel="noreferrer"><b>v{latest.version}</b><span>{t('sidebar.nouvelle_mise_a_jour')}</span></a>
+		{/if}
 	</div>
 </nav>
 
@@ -200,9 +218,57 @@
 	.tree {
 		margin: 2px 0 4px 8px;
 	}
-	.storage {
+	.foot {
 		margin-top: auto;
 		padding: 16px 12px 0;
+	}
+	.storage {
+		padding: 0;
+	}
+	.dtitle {
+		margin: 0 0 4px;
+		color: var(--text);
+		font-weight: 500;
+	}
+	.amount {
+		margin: 0 0 12px;
+	}
+	.srv {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		margin: 16px 0 8px;
+		color: var(--text-2);
+	}
+	.state {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.state i {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: #34a853;
+	}
+	.upd {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		padding: 8px 12px;
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		color: var(--text);
+		text-decoration: none;
+	}
+	.upd span {
+		color: var(--accent);
+		font-size: 13px;
+	}
+	.upd:hover {
+		background: var(--hover-bg);
 	}
 	.bar {
 		height: 4px;
@@ -216,8 +282,10 @@
 		border-radius: 2px;
 	}
 	.storage p {
-		margin: 12px 0;
 		color: var(--text-2);
+	}
+	.storage .bar {
+		margin-bottom: 12px;
 	}
 	.manage {
 		height: 40px;
@@ -270,8 +338,12 @@
 		.storage.full .mtitle :global(svg) {
 			color: var(--danger);
 		}
-		.storage .bar + p {
-			margin: 12px 0 12px;
+		.dtitle,
+		.amount {
+			display: none;
+		}
+		.storage .bar {
+			margin: 0 0 12px;
 		}
 		.side {
 			position: fixed;

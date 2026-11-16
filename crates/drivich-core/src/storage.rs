@@ -278,6 +278,7 @@ pub fn thumbnailable(mime: &str) -> bool {
         mime,
         "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "image/bmp" | "image/tiff"
     ) || mime.starts_with("video/")
+        || mime == "application/pdf"
 }
 
 #[cfg(test)]
@@ -341,6 +342,16 @@ mod tests {
             detect_mime("unknown.zzzz", b"abc"),
             "application/octet-stream"
         );
+    }
+
+    #[test]
+    fn thumbnailable_types() {
+        for m in ["image/png", "image/jpeg", "video/mp4", "application/pdf"] {
+            assert!(thumbnailable(m), "{m}");
+        }
+        for m in ["text/plain", "application/zip", "image/svg+xml"] {
+            assert!(!thumbnailable(m), "{m}");
+        }
     }
 
     #[test]

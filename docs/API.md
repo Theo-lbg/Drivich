@@ -5,7 +5,7 @@ Base : `/api/v1`. JSON partout, sauf octets de fichiers. Authentification par co
 ## Authentification
 | | |
 |---|---|
-| `GET /auth/status` | `{setup_required, signup_allowed, version}` |
+| `GET /auth/status` | `{setup_required, signup_allowed, version}` (`version` : celle de la release, ex. `0.6.2`, sans `v`) |
 | `POST /auth/setup` | crée l'administrateur (une seule fois) `{email,name,password}` |
 | `POST /auth/login` · `/auth/logout` · `/auth/signup` | session ; limitation des tentatives (429) |
 | `GET /me` · `PATCH /me` · `POST /me/password` | profil, usage/quota/disque (+ `immich_url` effective et `immich_default_url`), changement de mot de passe ; `PATCH /me {name?, immich_url?}` (http/https seulement, `null` pour effacer) |
